@@ -47,8 +47,8 @@ Get your API credentials at [my.telegram.org/apps](https://my.telegram.org/apps)
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/telegram-mcp.git
-cd telegram-mcp
+git clone https://github.com/arlanrakh/talk-to-girlfriend-ai.git
+cd talk-to-girlfriend-ai
 
 # Install Python dependencies
 uv sync
