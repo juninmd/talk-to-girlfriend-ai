@@ -396,6 +396,38 @@ async def send_message(chat_id: Union[int, str], message: str) -> str:
 
 @mcp.tool(
     annotations=ToolAnnotations(
+        title="Schedule Message", openWorldHint=True, destructiveHint=True
+    )
+)
+@validate_id("chat_id")
+async def schedule_message(
+    chat_id: Union[int, str], message: str, minutes_from_now: int
+) -> str:
+    """
+    Schedule a message to be sent at a future time.
+    Args:
+        chat_id: The ID or username of the chat.
+        message: The message content to send.
+        minutes_from_now: Number of minutes from now to send the message (min 1, max 525600 = 1 year).
+    """
+    from datetime import datetime, timedelta
+
+    try:
+        if minutes_from_now < 1:
+            return "Error: minutes_from_now must be at least 1"
+        if minutes_from_now > 525600:
+            return "Error: minutes_from_now cannot exceed 525600 (1 year)"
+
+        entity = await client.get_entity(chat_id)
+        schedule_time = datetime.now() + timedelta(minutes=minutes_from_now)
+        await client.send_message(entity, message, schedule=schedule_time)
+        return f"Message scheduled for {schedule_time.strftime('%Y-%m-%d %H:%M:%S')}"
+    except Exception as e:
+        return log_and_format_error("schedule_message", e, chat_id=chat_id)
+
+
+@mcp.tool(
+    annotations=ToolAnnotations(
         title="Subscribe Public Channel",
         openWorldHint=True,
         destructiveHint=True,

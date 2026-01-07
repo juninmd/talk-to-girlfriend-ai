@@ -135,6 +135,11 @@ class SendMessageRequest(BaseModel):
     reply_to: Optional[int] = None
 
 
+class ScheduleMessageRequest(BaseModel):
+    message: str
+    minutes_from_now: int
+
+
 class SendFileRequest(BaseModel):
     caption: Optional[str] = None
 
@@ -253,6 +258,37 @@ async def send_message(chat_id: Union[int, str], request: SendMessageRequest):
             "message_id": result.id,
             "date": result.date.isoformat() if result.date else None
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/chats/{chat_id}/schedule")
+async def schedule_message(chat_id: Union[int, str], request: ScheduleMessageRequest):
+    """Schedule a message to be sent at a future time."""
+    from datetime import timedelta
+
+    try:
+        if request.minutes_from_now < 1:
+            raise HTTPException(status_code=400, detail="minutes_from_now must be at least 1")
+        if request.minutes_from_now > 525600:
+            raise HTTPException(status_code=400, detail="minutes_from_now cannot exceed 525600 (1 year)")
+
+        # Handle string chat_id (username)
+        if isinstance(chat_id, str) and not chat_id.lstrip('-').isdigit():
+            entity = await client.get_entity(chat_id)
+        else:
+            entity = await client.get_entity(int(chat_id))
+
+        schedule_time = datetime.now() + timedelta(minutes=request.minutes_from_now)
+        result = await client.send_message(entity, request.message, schedule=schedule_time)
+
+        return {
+            "success": True,
+            "message_id": result.id,
+            "scheduled_for": schedule_time.isoformat()
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

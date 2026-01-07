@@ -152,6 +152,32 @@ export const sendMessage = tool({
   },
 });
 
+export const scheduleMessage = tool({
+  description: `Schedule a message to be sent at a future time. Perfect for sending good morning/night messages.`,
+  inputSchema: z.object({
+    chat_id: z
+      .union([z.number(), z.string()])
+      .describe("Chat ID (number) or username (string like '@username')"),
+    message: z.string().min(1).max(4096).describe("Message text to send"),
+    minutes_from_now: z.number().min(1).max(525600).describe("Minutes from now to send (1-525600, max 1 year)"),
+  }),
+  execute: async ({ chat_id, message, minutes_from_now }) => {
+    const data = await telegramFetch<{ success: boolean; message_id: number; scheduled_for: string }>(
+      `/chats/${chat_id}/schedule`,
+      {
+        method: "POST",
+        body: JSON.stringify({ message, minutes_from_now }),
+      }
+    );
+
+    return {
+      success: data.success,
+      messageId: data.message_id,
+      scheduledFor: data.scheduled_for,
+    };
+  },
+});
+
 export const getChat = tool({
   description: `Get detailed information about a specific chat by ID or username.`,
   inputSchema: z.object({
@@ -397,6 +423,7 @@ export const telegramTools = {
   getChats,
   getMessages,
   sendMessage,
+  scheduleMessage,
   getChat,
   searchContacts,
   // History & Search
