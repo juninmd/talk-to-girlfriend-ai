@@ -13,24 +13,24 @@ import { config, validateConfig } from "./config";
 const BANNER = `
 ${pc.cyan("╔════════════════════════════════════════════╗")}
 ${pc.cyan("║")}  ${pc.bold(pc.magenta("🤖 Telegram AI Agent"))}                     ${pc.cyan("║")}
-${pc.cyan("║")}  ${pc.dim("Your AI wingman for Telegram")}               ${pc.cyan("║")}
+${pc.cyan("║")}  ${pc.dim("Seu Assistente de IA para Telegram")}         ${pc.cyan("║")}
 ${pc.cyan("╚════════════════════════════════════════════╝")}
 `;
 
 // Help text
 const HELP_TEXT = `
-${pc.bold("Commands:")}
-  ${pc.yellow("/help")}     - Show this help message
-  ${pc.yellow("/clear")}    - Clear conversation history
-  ${pc.yellow("/status")}   - Check connection status
-  ${pc.yellow("/quit")}     - Exit the agent
+${pc.bold("Comandos:")}
+  ${pc.yellow("/help")}     - Mostrar esta ajuda
+  ${pc.yellow("/clear")}    - Limpar histórico da conversa
+  ${pc.yellow("/status")}   - Verificar conexão
+  ${pc.yellow("/quit")}     - Sair do agente
 
-${pc.bold("Example prompts:")}
-  ${pc.dim("• Show me my recent chats")}
-  ${pc.dim("• Read the last 5 messages from @username")}
-  ${pc.dim("• What should I reply to her message about coffee?")}
-  ${pc.dim("• Send 'Good morning beautiful ☀️' to @username")}
-  ${pc.dim("• AI-ify her message 'I miss you' in a flirty way")}
+${pc.bold("Exemplos de prompts:")}
+  ${pc.dim("• Mostre meus chats recentes")}
+  ${pc.dim("• Leia as últimas 5 mensagens de @usuario")}
+  ${pc.dim("• O que devo responder sobre o café?")}
+  ${pc.dim("• Envie 'Bom dia linda ☀️' para @usuario")}
+  ${pc.dim("• Melhore a mensagem 'Saudades' de um jeito romântico")}
 `;
 
 async function checkTelegramConnection(): Promise<boolean> {
@@ -53,45 +53,45 @@ async function main() {
   // Validate configuration
   validateConfig();
 
-  p.intro(pc.bgCyan(pc.black(" Welcome to your Telegram AI Agent ")));
+  p.intro(pc.bgCyan(pc.black(" Bem-vindo ao seu Agente Telegram com IA ")));
 
   // Check Telegram connection
   const connectionSpinner = p.spinner();
-  connectionSpinner.start("Checking Telegram connection...");
+  connectionSpinner.start("Verificando conexão com Telegram...");
 
   const isConnected = await checkTelegramConnection();
 
   if (isConnected) {
-    connectionSpinner.stop(pc.green("✓ Telegram connected"));
+    connectionSpinner.stop(pc.green("✓ Telegram conectado"));
   } else {
-    connectionSpinner.stop(pc.yellow("⚠ Telegram API not connected"));
+    connectionSpinner.stop(pc.yellow("⚠ API do Telegram não conectada"));
     p.note(
-      `Start the Telegram API bridge first:\n${pc.cyan("python telegram_api.py")}`,
-      "Setup Required"
+      `Inicie a ponte da API do Telegram primeiro:\n${pc.cyan("python telegram_api.py")}`,
+      "Configuração Necessária"
     );
   }
 
   // Show config status
   const configStatus = [
-    `Model: ${pc.cyan(config.model)}`,
-    `Telegram API: ${pc.cyan(config.telegramApiUrl)}`,
-    `Nia Source: ${config.niaCodebaseSource ? pc.green("✓ Configured") : pc.yellow("Not set")}`,
+    `Modelo: ${pc.cyan(config.model)}`,
+    `API Telegram: ${pc.cyan(config.telegramApiUrl)}`,
+    `Fonte Nia: ${config.niaCodebaseSource ? pc.green("✓ Configurado") : pc.yellow("Não definido")}`,
   ].join("\n");
 
-  p.note(configStatus, "Configuration");
+  p.note(configStatus, "Configuração");
 
   console.log(HELP_TEXT);
 
   // Main chat loop
   while (true) {
     const input = await p.text({
-      message: pc.cyan("You"),
-      placeholder: "Type your message or /help for commands...",
+      message: pc.cyan("Você"),
+      placeholder: "Digite sua mensagem ou /help para comandos...",
     });
 
     // Handle cancellation (Ctrl+C)
     if (p.isCancel(input)) {
-      p.outro(pc.dim("Goodbye! 👋"));
+      p.outro(pc.dim("Até logo! 👋"));
       process.exit(0);
     }
 
@@ -110,38 +110,38 @@ async function main() {
 
         case "/clear":
           clearHistory();
-          p.log.success("Conversation history cleared");
+          p.log.success("Histórico da conversa limpo");
           continue;
 
         case "/status":
           const connected = await checkTelegramConnection();
           p.log.info(
             connected
-              ? pc.green("Telegram: Connected ✓")
-              : pc.red("Telegram: Not connected ✗")
+              ? pc.green("Telegram: Conectado ✓")
+              : pc.red("Telegram: Não conectado ✗")
           );
-          p.log.info(`Messages in history: ${getHistoryLength()}`);
+          p.log.info(`Mensagens no histórico: ${getHistoryLength()}`);
           continue;
 
         case "/quit":
         case "/exit":
         case "/q":
-          p.outro(pc.dim("Goodbye! 👋"));
+          p.outro(pc.dim("Até logo! 👋"));
           process.exit(0);
 
         default:
-          p.log.warn(`Unknown command: ${command}. Type /help for available commands.`);
+          p.log.warn(`Comando desconhecido: ${command}. Digite /help para comandos disponíveis.`);
           continue;
       }
     }
 
     // Process with AI agent
     const spinner = p.spinner();
-    spinner.start(pc.dim("Thinking..."));
+    spinner.start(pc.dim("Pensando..."));
 
     try {
       const stream = await chat(message);
-      spinner.stop(pc.magenta("Agent"));
+      spinner.stop(pc.magenta("Agente"));
 
       // Stream the response
       let response = "";
