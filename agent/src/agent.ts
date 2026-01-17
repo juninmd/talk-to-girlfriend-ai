@@ -1,10 +1,10 @@
 /**
  * AI Agent for Telegram
- * Uses Claude Sonnet 4.5 via Vercel AI Gateway with tools
+ * Uses Gemini via Google AI SDK with tools
  */
 
 import { streamText, stepCountIs } from "ai";
-import { gateway } from "@ai-sdk/gateway";
+import { google } from "@ai-sdk/google";
 import pc from "picocolors";
 import { config } from "./config";
 import { telegramTools } from "./tools/telegram";
@@ -68,13 +68,13 @@ export async function chat(userMessage: string): Promise<AsyncIterable<string>> 
     content: userMessage,
   });
 
-  // Create the streaming response using AI Gateway with Claude Sonnet 4.5
+  // Create the streaming response using Google's Gemini
   const result = streamText({
-    model: gateway(config.model),
+    model: google(config.model),
     system: SYSTEM_PROMPT,
     messages: messageHistory,
     tools,
-    stopWhen: stepCountIs(10), // Allow up to 10 multi-step tool calls
+    maxSteps: 10, // Replaced stopWhen: stepCountIs(10) with maxSteps (current AI SDK API)
     onStepFinish: ({ toolCalls, toolResults }) => {
       // Log tool usage with clean formatting
       if (toolCalls && toolCalls.length > 0) {

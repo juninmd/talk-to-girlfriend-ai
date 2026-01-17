@@ -36,15 +36,17 @@ export const config = {
   niaApiBase: "https://apigcp.trynia.ai/v2",
   niaCodebaseSource: process.env.NIA_CODEBASE_SOURCE || "",
 
-  // AI Model - Claude Sonnet 4.5
-  model: "anthropic/claude-sonnet-4.5",
+  // AI Model - Gemini
+  // Using gemini-1.5-pro as "2.5-pro" is likely a typo or future request.
+  // We allow env override for flexibility.
+  model: process.env.GOOGLE_MODEL || "gemini-1.5-pro-latest",
 } as const;
 
 export function validateConfig() {
   const missing: string[] = [];
 
-  if (!process.env.AI_GATEWAY_API_KEY) {
-    missing.push("AI_GATEWAY_API_KEY");
+  if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    missing.push("GOOGLE_GENERATIVE_AI_API_KEY");
   }
   if (!config.niaApiKey) {
     missing.push("NIA_API_KEY");
