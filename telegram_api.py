@@ -14,28 +14,16 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from telethon import TelegramClient, functions
-from telethon.sessions import StringSession
+from telethon import functions
 from telethon.tl.types import User, Chat, Channel
 
-load_dotenv()
-
-TELEGRAM_API_ID = int(os.getenv("TELEGRAM_API_ID"))
-TELEGRAM_API_HASH = os.getenv("TELEGRAM_API_HASH")
-TELEGRAM_SESSION_NAME = os.getenv("TELEGRAM_SESSION_NAME")
-SESSION_STRING = os.getenv("TELEGRAM_SESSION_STRING")
+# Import from backend modules
+from backend.config import TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_SESSION_NAME, SESSION_STRING
+from backend.client import client as backend_client
+from backend.utils import json_serializer
 
 # Global client instance
-client: TelegramClient = None
-
-
-def json_serializer(obj):
-    """Helper function to convert non-serializable objects for JSON serialization."""
-    if isinstance(obj, datetime):
-        return obj.isoformat()
-    if isinstance(obj, bytes):
-        return obj.decode("utf-8", errors="replace")
-    raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+client = backend_client
 
 
 def format_entity(entity) -> Dict[str, Any]:
@@ -98,13 +86,7 @@ def format_message(message) -> Dict[str, Any]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage Telegram client lifecycle."""
-    global client
-    
-    if SESSION_STRING:
-        client = TelegramClient(StringSession(SESSION_STRING), TELEGRAM_API_ID, TELEGRAM_API_HASH)
-    else:
-        client = TelegramClient(TELEGRAM_SESSION_NAME, TELEGRAM_API_ID, TELEGRAM_API_HASH)
-    
+    # Client is already initialized in backend.client, just start it
     await client.start()
     print("✅ Telegram client connected")
     

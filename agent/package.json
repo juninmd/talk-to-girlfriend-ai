@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@ai-sdk/gateway": "^3.0.2",
+    "@ai-sdk/google": "^3.0.10",
     "@clack/prompts": "^0.10.0",
     "ai": "^6.0.3",
     "picocolors": "^1.1.1",
