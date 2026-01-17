@@ -2,6 +2,8 @@
 
 An AI-powered Telegram agent that helps you craft witty, engaging messages for your conversations. Built with Claude Sonnet, [Nia](https://trynia.ai) semantic search, and a full-featured Telegram MCP integration.
 
+**[Leia em Português](README_PT.md)** | **[Explicação do Código](EXPLICAÇÃO_DO_CÓDIGO.md)**
+
 ## What It Does
 
 - **Smart Reply Suggestions**: Get AI-powered response suggestions based on conversation context
