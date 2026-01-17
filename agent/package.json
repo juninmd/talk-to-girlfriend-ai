@@ -1,7 +1,7 @@
 {
   "name": "telegram-agent",
   "version": "1.0.0",
-  "description": "AI agent for Telegram with Nia integration",
+  "description": "AI agent for Telegram with Gemini integration",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
