@@ -204,3 +204,4 @@ sticker.webp
 two.png
 # Node
 node_modules/
+backend/database.db

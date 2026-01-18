@@ -5,8 +5,14 @@ import sqlite3
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from backend.client import client
 from backend.utils import log_and_format_error
+
+# Import new services
+from backend.database import create_db_and_tables
+from backend.services.learning import learning_service
+from backend.services.reporting import reporting_service
 
 # Import tools
 from backend.tools import chat, contacts, messages, misc, media, profile, admin, schedule, polls, drafts, stickers, bots, reactions, search
@@ -100,8 +106,21 @@ mcp.add_tool(misc.get_participants, annotations=ToolAnnotations(title="Get Parti
 
 async def _main() -> None:
     try:
+        print("Initializing database...")
+        create_db_and_tables()
+
         print("Starting Telegram client...")
         await client.start()
+
+        print("Starting Learning Service...")
+        await learning_service.start_listening()
+
+        # Scheduler for reports
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(reporting_service.generate_daily_report, 'interval', hours=24)
+        # scheduler.add_job(reporting_service.generate_daily_report, 'interval', minutes=2) # Debug: runs every 2 min
+        scheduler.start()
+
         print("Telegram client started. Running MCP server...")
         await mcp.run_stdio_async()
     except Exception as e:
