@@ -1,9 +1,12 @@
-from typing import Optional, List
-from datetime import datetime
-from sqlmodel import SQLModel, Field, create_engine, Session, select
+from typing import Optional
+from datetime import datetime, timezone
+import os
+from sqlmodel import SQLModel, Field, create_engine, Session
 
 # Database setup
-sqlite_file_name = "backend/database.db"
+# Use absolute path for database to avoid issues when running from different directories
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sqlite_file_name = os.path.join(BASE_DIR, "database.db")
 sqlite_url = f"sqlite:///{sqlite_file_name}"
 
 engine = create_engine(sqlite_url, connect_args={"check_same_thread": False})
@@ -15,7 +18,7 @@ class Message(SQLModel, table=True):
     sender_id: Optional[int]
     sender_name: Optional[str]
     text: str
-    date: datetime = Field(default_factory=datetime.utcnow)
+    date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_outgoing: bool
 
 class Fact(SQLModel, table=True):
@@ -25,7 +28,7 @@ class Fact(SQLModel, table=True):
     value: str
     category: str = "general" # personal, work, preference, etc.
     source_message_id: Optional[int] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
