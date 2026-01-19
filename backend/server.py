@@ -2,12 +2,14 @@ import sys
 import asyncio
 import nest_asyncio
 import sqlite3
+import logging
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from backend.client import client
 from backend.utils import log_and_format_error
+from backend.logging_setup import setup_logging
 
 # Import new services
 from backend.database import create_db_and_tables
@@ -16,6 +18,10 @@ from backend.services.reporting import reporting_service
 
 # Import tools
 from backend.tools import chat, contacts, messages, misc, media, profile, admin, schedule, polls, drafts, stickers, bots, reactions, search
+
+# Setup logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 mcp = FastMCP("telegram")
 
@@ -106,27 +112,27 @@ mcp.add_tool(misc.get_participants, annotations=ToolAnnotations(title="Get Parti
 
 async def _main() -> None:
     try:
-        print("Initializing database...")
+        logger.info("Initializing database...")
         create_db_and_tables()
 
-        print("Starting Telegram client...")
+        logger.info("Starting Telegram client...")
         await client.start()
 
-        print("Starting Learning Service...")
+        logger.info("Starting Learning Service...")
         await learning_service.start_listening()
 
         # Scheduler for reports
         scheduler = AsyncIOScheduler()
+        # Run reporting service every 24 hours
         scheduler.add_job(reporting_service.generate_daily_report, 'interval', hours=24)
-        # scheduler.add_job(reporting_service.generate_daily_report, 'interval', minutes=2) # Debug: runs every 2 min
         scheduler.start()
 
-        print("Telegram client started. Running MCP server...")
+        logger.info("Telegram client started. Running MCP server...")
         await mcp.run_stdio_async()
     except Exception as e:
-        print(f"Error starting client: {e}", file=sys.stderr)
+        logger.error(f"Error starting client: {e}")
         if isinstance(e, sqlite3.OperationalError) and "database is locked" in str(e):
-            print("Database lock detected.", file=sys.stderr)
+            logger.error("Database lock detected.")
         sys.exit(1)
 
 def main() -> None:
