@@ -15,6 +15,7 @@ from backend.utils import log_and_format_error, validate_id, get_sender_name, fo
 
 # Strategy: Define functions here. Import them in server.py and apply @mcp.tool().
 
+
 async def get_chats(page: int = 1, page_size: int = 20) -> str:
     """
     Get a paginated list of chats.
@@ -39,6 +40,7 @@ async def get_chats(page: int = 1, page_size: int = 20) -> str:
     except Exception as e:
         return log_and_format_error("get_chats", e)
 
+
 async def list_chats(chat_type: str = None, limit: int = 20) -> str:
     """
     List available chats with metadata.
@@ -60,7 +62,7 @@ async def list_chats(chat_type: str = None, limit: int = 20) -> str:
                 if getattr(entity, "broadcast", False):
                     current_type = "channel"
                 else:
-                    current_type = "group" # Supergroup
+                    current_type = "group"  # Supergroup
 
             if chat_type and current_type != chat_type.lower():
                 continue
@@ -80,7 +82,9 @@ async def list_chats(chat_type: str = None, limit: int = 20) -> str:
 
             unread_count = getattr(dialog, "unread_count", 0) or 0
             inner_dialog = getattr(dialog, "dialog", None)
-            unread_mark = bool(getattr(inner_dialog, "unread_mark", False)) if inner_dialog else False
+            unread_mark = (
+                bool(getattr(inner_dialog, "unread_mark", False)) if inner_dialog else False
+            )
 
             if unread_count > 0:
                 chat_info += f", Unread: {unread_count}"
@@ -96,6 +100,7 @@ async def list_chats(chat_type: str = None, limit: int = 20) -> str:
         return "\n".join(results)
     except Exception as e:
         return log_and_format_error("list_chats", e, chat_type=chat_type, limit=limit)
+
 
 @validate_id("chat_id")
 async def get_chat(chat_id: Union[int, str]) -> str:
@@ -114,7 +119,9 @@ async def get_chat(chat_id: Union[int, str]) -> str:
 
         if hasattr(entity, "title"):
             result.append(f"Title: {entity.title}")
-            chat_type = "Channel" if is_channel and getattr(entity, "broadcast", False) else "Group"
+            chat_type = (
+                "Channel" if is_channel and getattr(entity, "broadcast", False) else "Group"
+            )
             if is_channel and getattr(entity, "megagroup", False):
                 chat_type = "Supergroup"
             elif is_chat:
@@ -129,17 +136,21 @@ async def get_chat(chat_id: Union[int, str]) -> str:
                 result.append(f"Participants: Error fetching ({pe})")
         elif is_user:
             name = f"{entity.first_name}"
-            if entity.last_name: name += f" {entity.last_name}"
+            if entity.last_name:
+                name += f" {entity.last_name}"
             result.append(f"Name: {name}")
             result.append(f"Type: User")
-            if entity.username: result.append(f"Username: @{entity.username}")
-            if entity.phone: result.append(f"Phone: {entity.phone}")
+            if entity.username:
+                result.append(f"Username: @{entity.username}")
+            if entity.phone:
+                result.append(f"Phone: {entity.phone}")
             result.append(f"Bot: {'Yes' if entity.bot else 'No'}")
             result.append(f"Verified: {'Yes' if entity.verified else 'No'}")
 
         return "\n".join(result)
     except Exception as e:
         return log_and_format_error("get_chat", e, chat_id=chat_id)
+
 
 @validate_id("chat_id")
 async def leave_chat(chat_id: Union[int, str]) -> str:
@@ -160,21 +171,32 @@ async def leave_chat(chat_id: Union[int, str]) -> str:
         elif isinstance(entity, Chat):
             try:
                 me = await client.get_me(input_peer=True)
-                await client(functions.messages.DeleteChatUserRequest(chat_id=entity.id, user_id=me))
+                await client(
+                    functions.messages.DeleteChatUserRequest(chat_id=entity.id, user_id=me)
+                )
                 chat_name = getattr(entity, "title", str(chat_id))
                 return f"Left basic group {chat_name} (ID: {chat_id})."
             except Exception:
                 try:
                     me_full = await client.get_me()
-                    await client(functions.messages.DeleteChatUserRequest(chat_id=entity.id, user_id=me_full.id))
+                    await client(
+                        functions.messages.DeleteChatUserRequest(
+                            chat_id=entity.id, user_id=me_full.id
+                        )
+                    )
                     chat_name = getattr(entity, "title", str(chat_id))
                     return f"Left basic group {chat_name} (ID: {chat_id})."
                 except Exception as alt_err:
                     return log_and_format_error("leave_chat", alt_err, chat_id=chat_id)
         else:
-            return log_and_format_error("leave_chat", Exception(f"Cannot leave chat ID {chat_id} of type {type(entity).__name__}."), chat_id=chat_id)
+            return log_and_format_error(
+                "leave_chat",
+                Exception(f"Cannot leave chat ID {chat_id} of type {type(entity).__name__}."),
+                chat_id=chat_id,
+            )
     except Exception as e:
         return log_and_format_error("leave_chat", e, chat_id=chat_id)
+
 
 @validate_id("chat_id")
 async def get_invite_link(chat_id: Union[int, str]) -> str:
@@ -194,11 +216,13 @@ async def get_invite_link(chat_id: Union[int, str]) -> str:
     except Exception as e:
         return log_and_format_error("get_invite_link", e, chat_id=chat_id)
 
+
 async def join_chat_by_link(link: str) -> str:
     try:
         if "/" in link:
             hash_part = link.split("/")[-1]
-            if hash_part.startswith("+"): hash_part = hash_part[1:]
+            if hash_part.startswith("+"):
+                hash_part = hash_part[1:]
         else:
             hash_part = link
 
@@ -210,6 +234,7 @@ async def join_chat_by_link(link: str) -> str:
     except Exception as e:
         return log_and_format_error("join_chat_by_link", e, link=link)
 
+
 async def create_group(title: str, user_ids: List[Union[int, str]]) -> str:
     try:
         users = []
@@ -218,7 +243,8 @@ async def create_group(title: str, user_ids: List[Union[int, str]]) -> str:
                 users.append(await client.get_entity(user_id))
             except:
                 pass
-        if not users: return "Error: No valid users provided"
+        if not users:
+            return "Error: No valid users provided"
         result = await client(functions.messages.CreateChatRequest(users=users, title=title))
         if hasattr(result, "chats") and result.chats:
             return f"Group created with ID: {result.chats[0].id}"
@@ -226,43 +252,60 @@ async def create_group(title: str, user_ids: List[Union[int, str]]) -> str:
     except Exception as e:
         return log_and_format_error("create_group", e, title=title)
 
+
 @validate_id("chat_id")
 async def mute_chat(chat_id: Union[int, str]) -> str:
     try:
         peer = await client.get_input_entity(chat_id)
-        await client(functions.account.UpdateNotifySettingsRequest(
-            peer=peer, settings=functions.account.InputPeerNotifySettings(mute_until=2**31 - 1)
-        ))
+        await client(
+            functions.account.UpdateNotifySettingsRequest(
+                peer=peer, settings=functions.account.InputPeerNotifySettings(mute_until=2**31 - 1)
+            )
+        )
         return f"Chat {chat_id} muted."
     except Exception as e:
         return log_and_format_error("mute_chat", e, chat_id=chat_id)
+
 
 @validate_id("chat_id")
 async def unmute_chat(chat_id: Union[int, str]) -> str:
     try:
         peer = await client.get_input_entity(chat_id)
-        await client(functions.account.UpdateNotifySettingsRequest(
-            peer=peer, settings=functions.account.InputPeerNotifySettings(mute_until=0)
-        ))
+        await client(
+            functions.account.UpdateNotifySettingsRequest(
+                peer=peer, settings=functions.account.InputPeerNotifySettings(mute_until=0)
+            )
+        )
         return f"Chat {chat_id} unmuted."
     except Exception as e:
         return log_and_format_error("unmute_chat", e, chat_id=chat_id)
 
+
 @validate_id("chat_id")
 async def archive_chat(chat_id: Union[int, str]) -> str:
     try:
-        await client(functions.messages.ToggleDialogPinRequest(peer=await client.get_entity(chat_id), pinned=True))
+        await client(
+            functions.messages.ToggleDialogPinRequest(
+                peer=await client.get_entity(chat_id), pinned=True
+            )
+        )
         return f"Chat {chat_id} archived."
     except Exception as e:
         return log_and_format_error("archive_chat", e, chat_id=chat_id)
 
+
 @validate_id("chat_id")
 async def unarchive_chat(chat_id: Union[int, str]) -> str:
     try:
-        await client(functions.messages.ToggleDialogPinRequest(peer=await client.get_entity(chat_id), pinned=False))
+        await client(
+            functions.messages.ToggleDialogPinRequest(
+                peer=await client.get_entity(chat_id), pinned=False
+            )
+        )
         return f"Chat {chat_id} unarchived."
     except Exception as e:
         return log_and_format_error("unarchive_chat", e, chat_id=chat_id)
+
 
 @validate_id("chat_id")
 async def edit_chat_title(chat_id: Union[int, str], title: str) -> str:
@@ -278,29 +321,47 @@ async def edit_chat_title(chat_id: Union[int, str], title: str) -> str:
     except Exception as e:
         return log_and_format_error("edit_chat_title", e, chat_id=chat_id)
 
+
 @validate_id("chat_id")
 async def edit_chat_photo(chat_id: Union[int, str], file_path: str) -> str:
     try:
         from telethon.tl.types import InputChatUploadedPhoto
+
         entity = await client.get_entity(chat_id)
         uploaded = await client.upload_file(file_path)
         if isinstance(entity, Channel):
-            await client(functions.channels.EditPhotoRequest(channel=entity, photo=InputChatUploadedPhoto(file=uploaded)))
+            await client(
+                functions.channels.EditPhotoRequest(
+                    channel=entity, photo=InputChatUploadedPhoto(file=uploaded)
+                )
+            )
         elif isinstance(entity, Chat):
-            await client(functions.messages.EditChatPhotoRequest(chat_id=chat_id, photo=InputChatUploadedPhoto(file=uploaded)))
+            await client(
+                functions.messages.EditChatPhotoRequest(
+                    chat_id=chat_id, photo=InputChatUploadedPhoto(file=uploaded)
+                )
+            )
         return f"Chat {chat_id} photo updated."
     except Exception as e:
         return log_and_format_error("edit_chat_photo", e, chat_id=chat_id)
+
 
 @validate_id("chat_id")
 async def delete_chat_photo(chat_id: Union[int, str]) -> str:
     try:
         from telethon.tl.types import InputChatPhotoEmpty
+
         entity = await client.get_entity(chat_id)
         if isinstance(entity, Channel):
-            await client(functions.channels.EditPhotoRequest(channel=entity, photo=InputChatPhotoEmpty()))
+            await client(
+                functions.channels.EditPhotoRequest(channel=entity, photo=InputChatPhotoEmpty())
+            )
         elif isinstance(entity, Chat):
-            await client(functions.messages.EditChatPhotoRequest(chat_id=chat_id, photo=InputChatPhotoEmpty()))
+            await client(
+                functions.messages.EditChatPhotoRequest(
+                    chat_id=chat_id, photo=InputChatPhotoEmpty()
+                )
+            )
         return f"Chat {chat_id} photo deleted."
     except Exception as e:
         return log_and_format_error("delete_chat_photo", e, chat_id=chat_id)
