@@ -1,5 +1,6 @@
 from backend.services.learning import learning_service
 
+
 async def learn_from_chat(chat_id: int, limit: int = 100) -> str:
     """
     Ingests historical messages from a chat to learn facts and context.

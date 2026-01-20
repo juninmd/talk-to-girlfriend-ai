@@ -66,11 +66,12 @@ Histórico Recente da Conversa:
 Sua Resposta (em Português):
 """
 
+
 class AIService:
     def __init__(self):
         self.model = None
         if GOOGLE_API_KEY:
-            self.model = genai.GenerativeModel('gemini-pro')
+            self.model = genai.GenerativeModel("gemini-pro")
         else:
             logger.warning("GOOGLE_API_KEY not set. AI features disabled.")
 
@@ -89,10 +90,10 @@ class AIService:
             # Basic cleanup to ensure JSON parsing
             clean_text = response.text.replace("```json", "").replace("```", "").strip()
             # Handle case where LLM might add extra text
-            start_idx = clean_text.find('[')
-            end_idx = clean_text.rfind(']')
+            start_idx = clean_text.find("[")
+            end_idx = clean_text.rfind("]")
             if start_idx != -1 and end_idx != -1:
-                clean_text = clean_text[start_idx:end_idx+1]
+                clean_text = clean_text[start_idx : end_idx + 1]
 
             facts = json.loads(clean_text)
             if isinstance(facts, list):
@@ -122,12 +123,22 @@ class AIService:
         """Helper to fetch DB context synchronously."""
         with Session(engine) as session:
             # Get last 20 messages for better flow (increased from 15)
-            statement = select(Message).where(Message.chat_id == chat_id).order_by(Message.date.desc()).limit(20)
+            statement = (
+                select(Message)
+                .where(Message.chat_id == chat_id)
+                .order_by(Message.date.desc())
+                .limit(20)
+            )
             history = session.exec(statement).all()
-            history = sorted(history, key=lambda x: x.date) # sort back to chrono order
+            history = sorted(history, key=lambda x: x.date)  # sort back to chrono order
 
             # Get relevant facts
-            facts = session.exec(select(Fact).where(Fact.chat_id == chat_id).order_by(Fact.created_at.desc()).limit(30)).all()
+            facts = session.exec(
+                select(Fact)
+                .where(Fact.chat_id == chat_id)
+                .order_by(Fact.created_at.desc())
+                .limit(30)
+            ).all()
             return history, facts
 
     async def generate_natural_response(self, chat_id: int, user_message: str) -> str:
@@ -144,13 +155,13 @@ class AIService:
             logger.error(f"Error fetching context: {e}")
             history, facts = [], []
 
-        history_text = "\n".join([f"{'Bot' if m.is_outgoing else 'User'}: {m.text}" for m in history])
+        history_text = "\n".join(
+            [f"{'Bot' if m.is_outgoing else 'User'}: {m.text}" for m in history]
+        )
         facts_text = "\n".join([f"- {f.entity_name} ({f.category}): {f.value}" for f in facts])
 
         prompt = CONVERSATION_SYSTEM_PROMPT.format(
-            facts_text=facts_text,
-            history_text=history_text,
-            user_message=user_message
+            facts_text=facts_text, history_text=history_text, user_message=user_message
         )
 
         try:
@@ -159,5 +170,6 @@ class AIService:
         except Exception as e:
             logger.error(f"Error generating response: {e}")
             return "Desculpe, não consegui processar isso agora."
+
 
 ai_service = AIService()

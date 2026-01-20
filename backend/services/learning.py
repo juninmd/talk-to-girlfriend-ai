@@ -10,6 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class LearningService:
     def __init__(self):
         self.client = client
@@ -28,12 +29,15 @@ class LearningService:
 
             # Process oldest first for logical order in DB
             for msg in reversed(messages_list):
-                if not msg.message: continue
+                if not msg.message:
+                    continue
 
                 sender_name = "Unknown"
                 if msg.sender:
                     if hasattr(msg.sender, "first_name"):
-                        sender_name = f"{msg.sender.first_name} {msg.sender.last_name or ''}".strip()
+                        sender_name = (
+                            f"{msg.sender.first_name} {msg.sender.last_name or ''}".strip()
+                        )
                     elif hasattr(msg.sender, "title"):
                         sender_name = msg.sender.title
 
@@ -47,7 +51,7 @@ class LearningService:
                     "sender_name": sender_name,
                     "text": msg.message,
                     "date": msg.date,
-                    "is_outgoing": msg.out
+                    "is_outgoing": msg.out,
                 }
 
                 db_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
@@ -57,7 +61,7 @@ class LearningService:
             # Trigger learning on the last 20 USER messages (most recent)
             relevant_msgs = [m for m in messages_list if not m.out and m.message][:20]
             for m in relevant_msgs:
-                 asyncio.create_task(self._analyze_and_extract(m.message, m.id, chat_id))
+                asyncio.create_task(self._analyze_and_extract(m.message, m.id, chat_id))
 
             logger.info(f"Ingested {count} messages for chat {chat_id}.")
             return count
@@ -75,7 +79,12 @@ class LearningService:
         try:
             with Session(engine) as session:
                 # Check for duplicate
-                existing = session.exec(select(Message).where(Message.telegram_message_id == msg_data["telegram_message_id"], Message.chat_id == msg_data["chat_id"])).first()
+                existing = session.exec(
+                    select(Message).where(
+                        Message.telegram_message_id == msg_data["telegram_message_id"],
+                        Message.chat_id == msg_data["chat_id"],
+                    )
+                ).first()
                 if existing:
                     return existing.id
 
@@ -98,7 +107,7 @@ class LearningService:
                         entity_name=fact_data["entity"],
                         value=fact_data["value"],
                         category=fact_data.get("category", "general"),
-                        source_message_id=source_msg_id
+                        source_message_id=source_msg_id,
                     )
                     session.add(fact)
                 session.commit()
@@ -123,7 +132,9 @@ class LearningService:
             if event.sender:
                 if isinstance(event.sender, User):
                     is_bot = event.sender.bot
-                    sender_name = f"{event.sender.first_name} {event.sender.last_name or ''}".strip()
+                    sender_name = (
+                        f"{event.sender.first_name} {event.sender.last_name or ''}".strip()
+                    )
                 elif hasattr(event.sender, "title"):
                     sender_name = event.sender.title
 
@@ -138,7 +149,7 @@ class LearningService:
                 "sender_name": sender_name,
                 "text": text,
                 "date": date,
-                "is_outgoing": is_outgoing
+                "is_outgoing": is_outgoing,
             }
 
             # 1. Save to Database (Non-blocking)
@@ -179,7 +190,7 @@ class LearningService:
             delay = min(4, max(1, len(user_message) / 50))
             await asyncio.sleep(delay)
 
-            async with self.client.action(chat_id, 'typing'):
+            async with self.client.action(chat_id, "typing"):
                 # Generate response
                 response_text = await ai_service.generate_natural_response(chat_id, user_message)
 
@@ -191,5 +202,6 @@ class LearningService:
                     await self.client.send_message(chat_id, response_text)
         except Exception as e:
             logger.error(f"Error sending reply: {e}")
+
 
 learning_service = LearningService()

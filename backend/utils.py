@@ -5,9 +5,12 @@ from typing import Optional, Union, Any, Dict
 from functools import wraps
 from backend.logging_setup import logger
 
+
 class ValidationError(Exception):
     """Custom exception for validation errors."""
+
     pass
+
 
 class ErrorCategory(str, Enum):
     CHAT = "CHAT"
@@ -19,6 +22,7 @@ class ErrorCategory(str, Enum):
     AUTH = "AUTH"
     ADMIN = "ADMIN"
 
+
 def json_serializer(obj):
     """Helper function to convert non-serializable objects for JSON serialization."""
     if isinstance(obj, datetime.datetime):
@@ -26,6 +30,7 @@ def json_serializer(obj):
     if isinstance(obj, bytes):
         return obj.decode("utf-8", errors="replace")
     raise TypeError(f"Object of type {type(obj)} is not JSON serializable")
+
 
 def log_and_format_error(
     function_name: str,
@@ -56,10 +61,12 @@ def log_and_format_error(
 
     return f"An error occurred (code: {error_code}). Check mcp_errors.log for details."
 
+
 def validate_id(*param_names_to_validate):
     """
     Decorator to validate chat_id and user_id parameters.
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -72,20 +79,32 @@ def validate_id(*param_names_to_validate):
                 def validate_single_id(value, p_name):
                     if isinstance(value, int):
                         if not (-(2**63) <= value <= 2**63 - 1):
-                            return (None, f"Invalid {p_name}: {value}. ID is out of the valid integer range.")
+                            return (
+                                None,
+                                f"Invalid {p_name}: {value}. ID is out of the valid integer range.",
+                            )
                         return value, None
                     if isinstance(value, str):
                         try:
                             int_value = int(value)
                             if not (-(2**63) <= int_value <= 2**63 - 1):
-                                return (None, f"Invalid {p_name}: {value}. ID is out of the valid integer range.")
+                                return (
+                                    None,
+                                    f"Invalid {p_name}: {value}. ID is out of the valid integer range.",
+                                )
                             return int_value, None
                         except ValueError:
                             if re.match(r"^@?[a-zA-Z0-9_]{5,}$", value):
                                 return value, None
                             else:
-                                return (None, f"Invalid {p_name}: '{value}'. Must be a valid integer ID, or a username string.")
-                    return (None, f"Invalid {p_name}: {value}. Type must be an integer or a string.")
+                                return (
+                                    None,
+                                    f"Invalid {p_name}: '{value}'. Must be a valid integer ID, or a username string.",
+                                )
+                    return (
+                        None,
+                        f"Invalid {p_name}: {value}. Type must be an integer or a string.",
+                    )
 
                 if isinstance(param_value, list):
                     validated_list = []
@@ -114,11 +133,15 @@ def validate_id(*param_names_to_validate):
                     kwargs[param_name] = validated_value
 
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
+
 
 def format_entity(entity) -> Dict[str, Any]:
     from telethon.tl.types import Chat
+
     result = {"id": entity.id}
     if hasattr(entity, "title"):
         result["name"] = entity.title
@@ -136,6 +159,7 @@ def format_entity(entity) -> Dict[str, Any]:
         if hasattr(entity, "phone") and entity.phone:
             result["phone"] = entity.phone
     return result
+
 
 def get_sender_name(message) -> str:
     if not message.sender:

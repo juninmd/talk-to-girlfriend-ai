@@ -9,6 +9,7 @@ from backend.config import REPORT_CHANNEL_ID
 
 logger = logging.getLogger(__name__)
 
+
 class ReportingService:
     async def _fetch_messages_for_report(self):
         """Fetches messages in a thread."""
@@ -54,12 +55,17 @@ class ReportingService:
                         logger.info(f"Daily report sent successfully to {REPORT_CHANNEL_ID}.")
                     except ValueError:
                         # Sometimes get_entity fails if not seen before
-                        logger.warning(f"Could not find entity for {REPORT_CHANNEL_ID}. Ensure bot is admin or joined.")
+                        logger.warning(
+                            f"Could not find entity for {REPORT_CHANNEL_ID}. Ensure bot is admin or joined."
+                        )
                 except Exception as entity_err:
                     logger.error(f"Could not resolve channel {REPORT_CHANNEL_ID}: {entity_err}")
             else:
-                logger.warning(f"REPORT_CHANNEL_ID not set. Report generated but not sent:\n{report_text}")
+                logger.warning(
+                    f"REPORT_CHANNEL_ID not set. Report generated but not sent:\n{report_text}"
+                )
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")
+
 
 reporting_service = ReportingService()

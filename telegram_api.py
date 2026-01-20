@@ -9,23 +9,22 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.client import client
 from backend.api.routes import router
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage Telegram client lifecycle."""
     # Client is already initialized in backend.client, just start it
     await client.start()
     print("✅ Telegram client connected")
-    
+
     yield
-    
+
     await client.disconnect()
     print("👋 Telegram client disconnected")
 
 
 app = FastAPI(
-    title="Telegram API Bridge",
-    description="HTTP API for Telegram operations",
-    lifespan=lifespan
+    title="Telegram API Bridge", description="HTTP API for Telegram operations", lifespan=lifespan
 )
 
 app.add_middleware(
@@ -40,4 +39,5 @@ app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8765)
