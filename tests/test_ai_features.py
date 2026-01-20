@@ -10,16 +10,22 @@ os.environ["GOOGLE_API_KEY"] = "xyz"
 from backend.services.ai import AIService
 from backend.services.learning import LearningService
 
+
 @pytest.mark.asyncio
 async def test_fact_extraction():
     service = AIService()
     service.model = MagicMock()
     # Mock response to be valid JSON
-    service.model.generate_content_async = AsyncMock(return_value=MagicMock(text='[{"entity": "Name", "value": "Alice", "category": "personal"}]'))
+    service.model.generate_content_async = AsyncMock(
+        return_value=MagicMock(
+            text='[{"entity": "Name", "value": "Alice", "category": "personal"}]'
+        )
+    )
 
     facts = await service.extract_facts("My name is Alice")
     assert len(facts) == 1
     assert facts[0]["value"] == "Alice"
+
 
 @pytest.mark.asyncio
 async def test_ingest_history_flow():
@@ -48,16 +54,17 @@ async def test_ingest_history_flow():
         # But ingest_history calls asyncio.to_thread(self._save_message_to_db, ...)
 
         with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-            mock_to_thread.return_value = 1 # DB ID
+            mock_to_thread.return_value = 1  # DB ID
 
             # Also mock _analyze_and_extract (it's a method on service)
-            service._analyze_and_extract = MagicMock() # It returns a coroutine/task usually?
+            service._analyze_and_extract = MagicMock()  # It returns a coroutine/task usually?
             # Actually ingest_history calls asyncio.create_task(self._analyze_and_extract(...))
             # So _analyze_and_extract should allow being scheduled.
 
             # Since create_task expects a coroutine, we need _analyze_and_extract to return one.
             async def dummy_analyze(*args, **kwargs):
                 pass
+
             service._analyze_and_extract = dummy_analyze
 
             count = await service.ingest_history(123, limit=5)
