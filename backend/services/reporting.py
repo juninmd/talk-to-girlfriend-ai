@@ -32,9 +32,14 @@ class ReportingService:
             logger.info("No messages found for today's report.")
             return
 
+        # Calculate stats
+        total_msgs = len(messages)
+        unique_chats = len(set(m.chat_id for m in messages))
+        stats_text = f"📊 **Estatísticas:** {total_msgs} mensagens processadas em {unique_chats} conversas ativas."
+
         # 2. Summarize
         summary = await ai_service.summarize_conversations(messages)
-        report_text = f"**Relatório Diário de Conversas** 📅 {datetime.now().strftime('%d/%m/%Y')}\n\n{summary}"
+        report_text = f"**Relatório Diário de Conversas** 📅 {datetime.now().strftime('%d/%m/%Y')}\n\n{stats_text}\n\n{summary}"
 
         # 3. Send to Telegram Channel
         try:

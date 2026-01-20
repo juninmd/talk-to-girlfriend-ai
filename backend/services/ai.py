@@ -15,43 +15,55 @@ if GOOGLE_API_KEY:
 
 # Prompts
 FACT_EXTRACTION_PROMPT = """
-Analyze the following text and extract any specific facts, preferences, dates, or names mentioned.
-Ignore general chitchat or greeting unless it contains specific info (e.g., "Hi, I'm Bob").
-Return ONLY a JSON array of objects with keys: "entity", "value", "category".
+Analise o texto a seguir e extraia fatos específicos, preferências, datas importantes, nomes de pessoas, hobbies ou informações profissionais mencionadas.
+Ignore conversas fiadas (chitchat) ou saudações, a menos que contenham informações específicas (ex: "Oi, sou o Bruno").
+O objetivo é construir uma memória de longo prazo sobre o usuário e o contexto.
 
-Text: "{text}"
+Texto: "{text}"
 
-Example JSON:
+Retorne APENAS um array JSON de objetos com as chaves: "entity" (entidade), "value" (valor), "category" (categoria).
+Categorias sugeridas: "pessoal", "trabalho", "preferência", "agenda", "relacionamento", "localização".
+
+Exemplo JSON:
 [
-    {{"entity": "User Name", "value": "John", "category": "personal"}},
-    {{"entity": "Appointment", "value": "Tuesday at 5pm", "category": "schedule"}}
+    {{"entity": "Nome do Usuário", "value": "João Silva", "category": "pessoal"}},
+    {{"entity": "Time de Futebol", "value": "Flamengo", "category": "preferência"}},
+    {{"entity": "Reunião", "value": "Terça às 17h com a equipe de TI", "category": "agenda"}}
 ]
 """
 
 SUMMARY_PROMPT = """
-Summarize the following conversation log. Highlight key topics, decisions, and mood.
-Write the summary in Portuguese.
+Resuma o registro de conversa a seguir em formato de "Newsletter Diária".
+Destaque os tópicos principais, decisões tomadas, ideias discutidas e o "clima" geral das conversas.
+Se houver tarefas ou compromissos mencionados, liste-os separadamente.
+
+O resumo deve ser em Português do Brasil, com tom profissional mas leve.
+Use emojis para organizar.
 
 Log:
 {text_log}
 """
 
 CONVERSATION_SYSTEM_PROMPT = """
-Você é um assistente pessoal inteligente, amigável e natural.
-Seu objetivo é conversar como um humano, ser útil e lembrar de detalhes importantes.
-Não seja excessivamente formal, mas mantenha o respeito.
-Use o contexto das conversas anteriores e fatos que você sabe para personalizar a resposta.
-Se não souber algo, admita ou pergunte.
+Você é um assistente pessoal inteligente, amigável e natural, que se comunica em Português do Brasil.
+Seu objetivo é conversar como um humano (amigo ou colega prestativo), ser útil e lembrar de detalhes importantes.
+
+Diretrizes:
+1. **Naturalidade**: Não seja robótico. Use gírias leves se o contexto permitir, mas mantenha a educação.
+2. **Memória**: Use ativamente os "Fatos Conhecidos" e o "Histórico Recente" para personalizar sua resposta. Se o usuário já disse que gosta de X, não pergunte novamente, apenas mencione.
+3. **Contexto**: Responda diretamente à última mensagem, mas considerando o fluxo da conversa.
+4. **Honestidade**: Se não souber algo, admita ou pergunte para aprender.
+5. **Concisão**: Evite textos muito longos, a menos que seja solicitado uma explicação detalhada.
 
 Fatos Conhecidos sobre este chat:
 {facts_text}
 
-Histórico Recente:
+Histórico Recente da Conversa:
 {history_text}
 
 Última mensagem do Usuário: {user_message}
 
-Resposta (em Português):
+Sua Resposta (em Português):
 """
 
 class AIService:
@@ -93,9 +105,9 @@ class AIService:
     async def summarize_conversations(self, messages: List[Message]) -> str:
         """Summarizes a list of message objects."""
         if not self.model or not messages:
-            return "No messages to summarize."
+            return "Sem mensagens para resumir."
 
-        text_log = "\n".join([f"{m.sender_name or 'Unknown'}: {m.text}" for m in messages])
+        text_log = "\n".join([f"{m.sender_name or 'Desconhecido'}: {m.text}" for m in messages])
 
         prompt = SUMMARY_PROMPT.format(text_log=text_log)
 
@@ -104,13 +116,13 @@ class AIService:
             return response.text
         except Exception as e:
             logger.error(f"Error summarizing: {e}")
-            return "Error generating summary."
+            return "Erro ao gerar resumo."
 
     def _get_context(self, chat_id: int):
         """Helper to fetch DB context synchronously."""
         with Session(engine) as session:
-            # Get last 15 messages for flow
-            statement = select(Message).where(Message.chat_id == chat_id).order_by(Message.date.desc()).limit(15)
+            # Get last 20 messages for better flow (increased from 15)
+            statement = select(Message).where(Message.chat_id == chat_id).order_by(Message.date.desc()).limit(20)
             history = session.exec(statement).all()
             history = sorted(history, key=lambda x: x.date) # sort back to chrono order
 
@@ -133,7 +145,7 @@ class AIService:
             history, facts = [], []
 
         history_text = "\n".join([f"{'Bot' if m.is_outgoing else 'User'}: {m.text}" for m in history])
-        facts_text = "\n".join([f"- {f.entity_name}: {f.value}" for f in facts])
+        facts_text = "\n".join([f"- {f.entity_name} ({f.category}): {f.value}" for f in facts])
 
         prompt = CONVERSATION_SYSTEM_PROMPT.format(
             facts_text=facts_text,

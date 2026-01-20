@@ -17,7 +17,7 @@ from backend.services.learning import learning_service
 from backend.services.reporting import reporting_service
 
 # Import tools
-from backend.tools import chat, contacts, messages, misc, media, profile, admin, schedule, polls, drafts, stickers, bots, reactions, search
+from backend.tools import chat, contacts, messages, misc, media, profile, admin, schedule, polls, drafts, stickers, bots, reactions, search, learning
 
 # Setup logging
 setup_logging()
@@ -26,6 +26,9 @@ logger = logging.getLogger(__name__)
 mcp = FastMCP("telegram")
 
 # Register Tools
+# Learning Tools
+mcp.add_tool(learning.learn_from_chat, annotations=ToolAnnotations(title="Learn From Chat History", openWorldHint=True, destructiveHint=True))
+
 # Chat Tools
 mcp.add_tool(chat.get_chats, annotations=ToolAnnotations(title="Get Chats", openWorldHint=True, readOnlyHint=True))
 mcp.add_tool(chat.list_chats, annotations=ToolAnnotations(title="List Chats", openWorldHint=True, readOnlyHint=True))

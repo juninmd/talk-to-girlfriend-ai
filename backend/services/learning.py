@@ -14,6 +14,57 @@ class LearningService:
     def __init__(self):
         self.client = client
 
+    async def ingest_history(self, chat_id: int, limit: int = 100):
+        """Fetches past messages and saves them to DB. Learns from recent ones."""
+        logger.info(f"Starting history ingestion for chat {chat_id}, limit={limit}...")
+        try:
+            # We need to resolve the entity first
+            entity = await self.client.get_entity(chat_id)
+            messages = await self.client.get_messages(entity, limit=limit)
+
+            # Convert to list to iterate
+            messages_list = list(messages)
+            count = 0
+
+            # Process oldest first for logical order in DB
+            for msg in reversed(messages_list):
+                if not msg.message: continue
+
+                sender_name = "Unknown"
+                if msg.sender:
+                    if hasattr(msg.sender, "first_name"):
+                        sender_name = f"{msg.sender.first_name} {msg.sender.last_name or ''}".strip()
+                    elif hasattr(msg.sender, "title"):
+                        sender_name = msg.sender.title
+
+                if not sender_name:
+                    sender_name = str(msg.sender_id)
+
+                msg_data = {
+                    "telegram_message_id": msg.id,
+                    "chat_id": chat_id,
+                    "sender_id": msg.sender_id,
+                    "sender_name": sender_name,
+                    "text": msg.message,
+                    "date": msg.date,
+                    "is_outgoing": msg.out
+                }
+
+                db_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
+                if db_id:
+                    count += 1
+
+            # Trigger learning on the last 20 USER messages (most recent)
+            relevant_msgs = [m for m in messages_list if not m.out and m.message][:20]
+            for m in relevant_msgs:
+                 asyncio.create_task(self._analyze_and_extract(m.message, m.id, chat_id))
+
+            logger.info(f"Ingested {count} messages for chat {chat_id}.")
+            return count
+        except Exception as e:
+            logger.error(f"Error ingesting history: {e}")
+            return 0
+
     async def start_listening(self):
         """Registers event handlers for incoming messages."""
         logger.info("Starting LearningService event listener...")
