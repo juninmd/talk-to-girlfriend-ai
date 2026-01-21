@@ -33,13 +33,40 @@ class ReportingService:
             logger.info("No messages found for today's report.")
             return
 
+        # Group messages by chat_id
+        grouped_msgs = {}
+        for m in messages:
+            if m.chat_id not in grouped_msgs:
+                grouped_msgs[m.chat_id] = []
+            grouped_msgs[m.chat_id].append(m)
+
+        # Resolve titles and prepare data for AI
+        final_data = {}
+        for chat_id, msgs in grouped_msgs.items():
+            title = f"Chat {chat_id}"
+            try:
+                # Try to get entity to find the name
+                entity = await client.get_entity(chat_id)
+                if hasattr(entity, 'title'):
+                    title = entity.title
+                elif hasattr(entity, 'first_name'):
+                    title = f"{entity.first_name} {entity.last_name or ''}".strip()
+            except Exception:
+                # If we can't resolve, check if we have any sender name in the messages that matches the other person
+                # This is a fallback heuristic
+                pass
+
+            # Ensure unique key by appending ID
+            unique_key = f"{title} (ID: {chat_id})"
+            final_data[unique_key] = msgs
+
         # Calculate stats
         total_msgs = len(messages)
-        unique_chats = len(set(m.chat_id for m in messages))
+        unique_chats = len(grouped_msgs)
         stats_text = f"📊 **Estatísticas:** {total_msgs} mensagens processadas em {unique_chats} conversas ativas."
 
         # 2. Summarize
-        summary = await ai_service.summarize_conversations(messages)
+        summary = await ai_service.summarize_conversations(final_data)
         report_text = f"**Relatório Diário de Conversas** 📅 {datetime.now().strftime('%d/%m/%Y')}\n\n{stats_text}\n\n{summary}"
 
         # 3. Send to Telegram Channel
