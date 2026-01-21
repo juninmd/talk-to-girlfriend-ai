@@ -256,10 +256,12 @@ async def create_group(title: str, user_ids: List[Union[int, str]]) -> str:
 @validate_id("chat_id")
 async def mute_chat(chat_id: Union[int, str]) -> str:
     try:
+        from telethon.tl.types import InputPeerNotifySettings
+
         peer = await client.get_input_entity(chat_id)
         await client(
             functions.account.UpdateNotifySettingsRequest(
-                peer=peer, settings=functions.account.InputPeerNotifySettings(mute_until=2**31 - 1)
+                peer=peer, settings=InputPeerNotifySettings(mute_until=2**31 - 1)
             )
         )
         return f"Chat {chat_id} muted."
@@ -270,10 +272,12 @@ async def mute_chat(chat_id: Union[int, str]) -> str:
 @validate_id("chat_id")
 async def unmute_chat(chat_id: Union[int, str]) -> str:
     try:
+        from telethon.tl.types import InputPeerNotifySettings
+
         peer = await client.get_input_entity(chat_id)
         await client(
             functions.account.UpdateNotifySettingsRequest(
-                peer=peer, settings=functions.account.InputPeerNotifySettings(mute_until=0)
+                peer=peer, settings=InputPeerNotifySettings(mute_until=0)
             )
         )
         return f"Chat {chat_id} unmuted."
