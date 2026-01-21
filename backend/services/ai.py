@@ -33,14 +33,18 @@ Exemplo JSON:
 """
 
 SUMMARY_PROMPT = """
-Resuma o registro de conversa a seguir em formato de "Newsletter Diária".
-Destaque os tópicos principais, decisões tomadas, ideias discutidas e o "clima" geral das conversas.
-Se houver tarefas ou compromissos mencionados, liste-os separadamente.
+Resuma o registro de conversas a seguir em formato de "Newsletter Diária".
+O log contém conversas de diferentes chats, separados por cabeçalhos.
 
-O resumo deve ser em Português do Brasil, com tom profissional mas leve.
-Use emojis para organizar.
+Para cada conversa (ou grupo de conversas):
+1. Identifique o tema principal.
+2. Destaque decisões, ideias e o "clima" da conversa.
+3. Liste tarefas ou compromissos se houver.
 
-Log:
+O resumo final deve ser uma visão geral do dia, em Português do Brasil, profissional mas leve.
+Use emojis e seções claras.
+
+Log das Conversas:
 {text_log}
 """
 
@@ -50,10 +54,10 @@ Seu objetivo é conversar como um humano (amigo ou colega prestativo), ser útil
 
 Diretrizes:
 1. **Naturalidade**: Não seja robótico. Use gírias leves se o contexto permitir, mas mantenha a educação.
-2. **Memória**: Use ativamente os "Fatos Conhecidos" e o "Histórico Recente" para personalizar sua resposta. Se o usuário já disse que gosta de X, não pergunte novamente, apenas mencione.
-3. **Contexto**: Responda diretamente à última mensagem, mas considerando o fluxo da conversa.
-4. **Honestidade**: Se não souber algo, admita ou pergunte para aprender.
-5. **Concisão**: Evite textos muito longos, a menos que seja solicitado uma explicação detalhada.
+2. **Memória**: Use ativamente os "Fatos Conhecidos" e o "Histórico Recente" para personalizar sua resposta.
+3. **Identidade**: Observe os nomes dos participantes no histórico. Se o "sender_name" for você (o bot), entenda que foi algo que você disse.
+4. **Contexto**: Responda diretamente à última mensagem.
+5. **Concisão**: Evite textos muito longos, a menos que solicitado.
 
 Fatos Conhecidos sobre este chat:
 {facts_text}
@@ -61,7 +65,7 @@ Fatos Conhecidos sobre este chat:
 Histórico Recente da Conversa:
 {history_text}
 
-Última mensagem do Usuário: {user_message}
+Última mensagem: {user_message}
 
 Sua Resposta (em Português):
 """
@@ -103,12 +107,32 @@ class AIService:
             logger.error(f"Error extracting facts: {e}")
             return []
 
-    async def summarize_conversations(self, messages: List[Message]) -> str:
-        """Summarizes a list of message objects."""
-        if not self.model or not messages:
-            return "Sem mensagens para resumir."
+    async def summarize_conversations(self, data: Any) -> str:
+        """
+        Summarizes conversations.
+        Accepts:
+        - List[Message]: Flat list of messages (backward compatibility)
+        - Dict[str, List[Message]]: Grouped by chat identifier
+        """
+        if not self.model or not data:
+            return "Sem dados para resumir."
 
-        text_log = "\n".join([f"{m.sender_name or 'Desconhecido'}: {m.text}" for m in messages])
+        text_log = ""
+
+        if isinstance(data, list) and all(isinstance(m, Message) for m in data):
+            # Flat list
+            text_log = "\n".join([f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}" for m in data])
+        elif isinstance(data, dict):
+            # Grouped dict
+            chunks = []
+            for chat_name, msgs in data.items():
+                chunks.append(f"--- Chat: {chat_name} ---")
+                for m in msgs:
+                    chunks.append(f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}")
+                chunks.append("") # Empty line
+            text_log = "\n".join(chunks)
+        else:
+            return "Formato de dados inválido para resumo."
 
         prompt = SUMMARY_PROMPT.format(text_log=text_log)
 
@@ -156,7 +180,7 @@ class AIService:
             history, facts = [], []
 
         history_text = "\n".join(
-            [f"{'Bot' if m.is_outgoing else 'User'}: {m.text}" for m in history]
+            [f"[{m.date.strftime('%d/%m %H:%M')}] {m.sender_name}: {m.text}" for m in history]
         )
         facts_text = "\n".join([f"- {f.entity_name} ({f.category}): {f.value}" for f in facts])
 

@@ -58,12 +58,26 @@ class LearningService:
                 if db_id:
                     count += 1
 
-            # Trigger learning on the last 20 USER messages (most recent)
-            relevant_msgs = [m for m in messages_list if not m.out and m.message][:20]
-            for m in relevant_msgs:
-                asyncio.create_task(self._analyze_and_extract(m.message, m.id, chat_id))
+            # Trigger learning on extracted messages
+            # Filter relevant messages (incoming, text only, substantial length)
+            relevant_msgs = [
+                m for m in messages_list
+                if not m.out and m.message and len(m.message) > 5
+            ]
 
-            logger.info(f"Ingested {count} messages for chat {chat_id}.")
+            # Analyze in batches to avoid overwhelming the API
+            batch_size = 5
+            for i in range(0, len(relevant_msgs), batch_size):
+                batch = relevant_msgs[i : i + batch_size]
+                tasks = []
+                for m in batch:
+                    tasks.append(self._analyze_and_extract(m.message, m.id, chat_id))
+
+                # Run batch and wait a bit
+                await asyncio.gather(*tasks)
+                await asyncio.sleep(1)  # Rate limit protection
+
+            logger.info(f"Ingested {count} messages for chat {chat_id}. Analyzed {len(relevant_msgs)} for facts.")
             return count
         except Exception as e:
             logger.error(f"Error ingesting history: {e}")
