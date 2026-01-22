@@ -33,6 +33,7 @@ from backend.tools import (
     reactions,
     search,
     learning,
+    reporting,
 )
 
 # Setup logging
@@ -47,6 +48,14 @@ mcp.add_tool(
     learning.learn_from_chat,
     annotations=ToolAnnotations(
         title="Learn From Chat History", openWorldHint=True, destructiveHint=True
+    ),
+)
+
+# Reporting Tools
+mcp.add_tool(
+    reporting.generate_daily_report_now,
+    annotations=ToolAnnotations(
+        title="Generate Daily Report Now", openWorldHint=True, destructiveHint=True
     ),
 )
 
@@ -327,8 +336,8 @@ async def _main() -> None:
 
         # Scheduler for reports
         scheduler = AsyncIOScheduler()
-        # Run reporting service every 24 hours
-        scheduler.add_job(reporting_service.generate_daily_report, "interval", hours=24)
+        # Run reporting service every day at 8:00 AM UTC
+        scheduler.add_job(reporting_service.generate_daily_report, "cron", hour=8, minute=0)
         scheduler.start()
 
         logger.info("Telegram client started. Running MCP server...")
