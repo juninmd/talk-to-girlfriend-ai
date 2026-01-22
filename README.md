@@ -1,75 +1,68 @@
-# Telegram AI Dating Agent (Português)
+# Telegram AI Agent (Português)
 
-Um agente de Telegram alimentado por IA que ajuda você a criar mensagens espirituosas e envolventes para suas conversas. Construído com Claude Sonnet, busca semântica [Nia](https://trynia.ai) e uma integração completa do Telegram MCP.
+Um agente de Telegram inteligente e modular, projetado para auxiliar em conversas, gerenciar memória de longo prazo e fornecer insights diários.
 
-## O Que Ele Faz
+O projeto combina um **Backend Python** robusto (FastAPI, Telethon, Google Gemini) com um **Agente CLI TypeScript** (opcional) para interações avançadas via terminal.
 
-- **Sugestões de Respostas Inteligentes**: Obtenha sugestões de resposta alimentadas por IA com base no contexto da conversa.
-- **500+ Cantadas (Pickup Lines)**: Busca semântica através de uma coleção curada de cantadas indexadas com Nia.
-- **Guias de Namoro**: Pesquise em guias sobre como conversar com mulheres, iniciadores de conversa e dicas de paquera.
-- **Melhoria de Mensagens**: Transforme mensagens chatas em espirituosas e envolventes.
-- **Acesso Completo ao Telegram**: Leia mensagens, envie respostas, gerencie chats - tudo através de linguagem natural.
+## Funcionalidades Principais
 
-## Alimentado por Nia
-
-Este agente usa [Nia](https://trynia.ai) como seu mecanismo de recuperação de conhecimento. Nia indexa e pesquisa em:
-- 500+ cantadas curadas (engraçadas, bregas, inteligentes, românticas)
-- Guias sobre técnicas de conversação
-- Dicas para manter conversas envolventes
-
-Você pode indexar seu próprio conteúdo criando uma fonte em [trynia.ai](https://trynia.ai).
+*   **Respostas Naturais com IA:** Utiliza **Google Gemini** para gerar respostas contextuais, engraçadas ou sérias, baseadas no histórico da conversa.
+*   **Memória de Longo Prazo:** O `LearningService` analisa conversas passadas para extrair e armazenar fatos importantes (preferências, datas, nomes) automaticamente.
+*   **Relatórios Diários:** O `ReportingService` gera resumos diários ("Newsletter") das suas conversas, destacando pontos importantes e tarefas.
+*   **Integração Completa:** Funciona como um cliente de Telegram real (Userbot) capaz de ler e enviar mensagens, reagir e gerenciar chats.
+*   **Servidor MCP (Model Context Protocol):** Expõe funcionalidades do Telegram para ferramentas compatíveis com MCP (como Claude Desktop ou Cursor).
 
 ## Arquitetura
 
-```
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│   CLI Agent      │────▶│  Telegram API    │────▶│    Telegram      │
-│  (TypeScript)    │     │   Bridge (Py)    │     │    Servers       │
-└──────────────────┘     └──────────────────┘     └──────────────────┘
-         │
-         ▼
-┌──────────────────┐     ┌──────────────────┐
-│  Claude Sonnet   │     │    Nia API       │
-│   (AI Gateway)   │     │ (trynia.ai)      │
-└──────────────────┘     └──────────────────┘
-                         - 500+ cantadas
-                         - Guias de namoro
-                         - Dicas de conversa
-```
+O núcleo do sistema é um backend Python modular:
 
-## Guia de Início Rápido
+*   **`backend/services/ai.py`**: Gerencia interações com o Google Gemini (Chat, Resumo, Extração de Fatos). Consulte [GEMINI.md](GEMINI.md) para detalhes.
+*   **`backend/services/learning.py`**: Processa mensagens em background para "aprender" sobre os contatos.
+*   **`backend/services/reporting.py`**: Gera estatísticas e resumos diários.
+*   **`backend/services/telegram.py`**: Abstração da API do Telegram (Telethon).
 
-### 1. Obter Credenciais da API do Telegram
+## Pré-requisitos
 
-Obtenha suas credenciais de API em [my.telegram.org/apps](https://my.telegram.org/apps).
+*   Python 3.10+
+*   Conta no Telegram (API ID e Hash)
+*   Google Gemini API Key
 
-### 2. Instalar e Configurar
+## Configuração
+
+1.  **Clone o repositório:**
+    ```bash
+    git clone https://github.com/seu-usuario/seu-repo.git
+    cd seu-repo
+    ```
+
+2.  **Variáveis de Ambiente:**
+    Copie o exemplo e edite:
+    ```bash
+    cp .env.example .env
+    ```
+    Preencha:
+    *   `TELEGRAM_API_ID` e `TELEGRAM_API_HASH`: Obtenha em [my.telegram.org](https://my.telegram.org).
+    *   `GOOGLE_API_KEY`: Chave da API do Google Gemini AI Studio.
+    *   `TELEGRAM_SESSION_STRING`: (Opcional) Gerada via script auxiliar.
+
+3.  **Instalação (Python):**
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+## Como Rodar
+
+### Backend (Servidor Principal)
+
+Para iniciar o servidor MCP e a API:
 
 ```bash
-# Clonar o repositório
-git clone https://github.com/arlanrakh/talk-to-girlfriend-ai.git
-cd talk-to-girlfriend-ai
-
-# Instalar dependências Python
-uv sync
-
-# Gerar string de sessão do Telegram
-uv run session_string_generator.py
-
-# Configurar ambiente
-cp .env.example .env
-# Edite .env com suas credenciais
+python main.py
 ```
 
-### 3. Iniciar a Ponte da API do Telegram
+### Agente TypeScript (CLI)
 
-```bash
-python telegram_api.py
-```
-
-Isso executa um servidor FastAPI na porta 8765 que conecta o agente TypeScript ao Telegram.
-
-### 4. Executar o Agente de IA
+O agente CLI oferece uma interface de terminal interativa.
 
 ```bash
 cd agent
@@ -77,100 +70,20 @@ bun install
 bun run dev
 ```
 
-## Exemplos de Uso
+## Documentação Adicional
 
-Uma vez em execução, interaja com linguagem natural (você pode falar em português):
+*   **[GEMINI.md](GEMINI.md):** Boas práticas e detalhes da implementação do Google Gemini.
+*   **[EXPLICAÇÃO_DO_CÓDIGO.md](EXPLICAÇÃO_DO_CÓDIGO.md):** Visão detalhada da estrutura do código (pode estar desatualizado em relação à arquitetura Gemini recente).
 
-```
-# Lendo e Enviando
-> Mostre-me mensagens de @nome_dela
-> Envie "Ei, estava pensando em você" para @nome_dela
-> Responda à última mensagem dela com algo espirituoso
+## Desenvolvimento e Testes
 
-# Reações
-> Reaja à última mensagem dela com ❤️
-> Envie uma reação de 🔥 para a mensagem 123
-
-# Pesquisa e Histórico
-> Pesquise em nosso chat por "jantar"
-> Mostre-me as últimas 50 mensagens com ela
-> Encontre uma cantada engraçada sobre pizza
-
-# Assistência de IA
-> O que devo responder à mensagem dela sobre café?
-> Torne esta mensagem mais sedutora: "quer sair amanhã?"
-> Pesquise dicas sobre como manter uma conversa fluindo
-
-# Informações do Usuário
-> Ela está online agora?
-> Verifique o status dela
-
-# Gerenciamento de Mensagens
-> Edite minha última mensagem para corrigir o erro de digitação
-> Apague a mensagem 456
-> Encaminhe aquele meme para @amigo
-```
-
-### Comandos do Agente
-
-- `/help` - Mostrar ajuda
-- `/clear` - Limpar histórico de conversa
-- `/status` - Verificar status da conexão
-- `/quit` - Sair
-
-## Variáveis de Ambiente
-
-Crie um arquivo `.env` na raiz do projeto:
-
-```env
-# Telegram API (Obrigatório)
-TELEGRAM_API_ID=seu_api_id
-TELEGRAM_API_HASH=seu_api_hash
-TELEGRAM_SESSION_STRING=sua_session_string
-
-# Serviços de IA (Obrigatório para o agente)
-AI_GATEWAY_API_KEY=sua_chave_vercel_ai_gateway
-NIA_API_KEY=sua_chave_nia_api
-NIA_CODEBASE_SOURCE=uuid_da_sua_fonte_de_cantadas
-```
-
-## Alternativa: Usar como Servidor MCP
-
-Você também pode usar isso como um servidor MCP autônomo com Claude Desktop ou Cursor, sem o agente de IA.
-
-Adicione à sua configuração MCP (`~/Library/Application Support/Claude/claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "telegram": {
-      "command": "uv",
-      "args": ["--directory", "/caminho/para/telegram-mcp", "run", "main.py"]
-    }
-  }
-}
-```
-
-Isso expõe mais de 60 ferramentas do Telegram, incluindo mensagens, contatos, grupos, canais, reações e muito mais.
-
-## Docker
+O projeto visa 100% de cobertura de testes.
 
 ```bash
-docker build -t telegram-mcp:latest .
-docker compose up --build
+# Rodar testes
+python -m pytest
 ```
 
-## Solução de Problemas
+## Contribuição
 
-- **Erros de bloqueio de banco de dados**: Use autenticação por string de sessão em vez de baseada em arquivo.
-- **Erros de autenticação**: Gere novamente a string de sessão com `uv run session_string_generator.py`.
-- **Problemas de conexão**: Verifique se `telegram_api.py` está rodando na porta 8765.
-- **Logs de erro**: Verifique `mcp_errors.log` para erros detalhados.
-
-## Segurança
-
-- Nunca faça commit do seu `.env` ou string de sessão.
-- String de sessão = acesso total à conta do Telegram.
-- Todo o processamento é local, os dados vão apenas para a API do Telegram.
-
-## Para explicações detalhadas do código, consulte [EXPLICAÇÃO_DO_CÓDIGO.md](EXPLICAÇÃO_DO_CÓDIGO.md).
+Siga os princípios de Clean Code, DRY (Don't Repeat Yourself) e KISS (Keep It Simple, Stupid). O código deve ser mantido em inglês, mas a documentação e prompts em Português.
