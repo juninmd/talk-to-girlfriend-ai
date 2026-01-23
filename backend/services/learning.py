@@ -67,7 +67,12 @@ class LearningService:
 
             # Analyze in batches to avoid overwhelming the API
             batch_size = 5
+            total_batches = (len(relevant_msgs) + batch_size - 1) // batch_size
+
             for i in range(0, len(relevant_msgs), batch_size):
+                batch_num = (i // batch_size) + 1
+                logger.info(f"Processing learning batch {batch_num}/{total_batches} for chat {chat_id}...")
+
                 batch = relevant_msgs[i : i + batch_size]
                 tasks = []
                 for m in batch:
