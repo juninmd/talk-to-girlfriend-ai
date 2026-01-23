@@ -1,74 +1,23 @@
 import json
 import logging
 import asyncio
+import re
 import google.generativeai as genai
 from typing import List, Dict, Any
 from sqlmodel import Session, select
 from backend.database import engine, Message, Fact
 from backend.config import GOOGLE_API_KEY
+from backend.prompts import (
+    FACT_EXTRACTION_PROMPT,
+    SUMMARY_PROMPT,
+    CONVERSATION_SYSTEM_PROMPT,
+)
 
 logger = logging.getLogger(__name__)
 
 # Configure Gemini
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
-
-# Prompts
-FACT_EXTRACTION_PROMPT = """
-Analise o texto a seguir e extraia fatos específicos, preferências, datas importantes, nomes de pessoas, hobbies ou informações profissionais mencionadas.
-Ignore conversas fiadas (chitchat) ou saudações, a menos que contenham informações específicas (ex: "Oi, sou o Bruno").
-O objetivo é construir uma memória de longo prazo sobre o usuário e o contexto.
-
-Texto: "{text}"
-
-Retorne APENAS um array JSON de objetos com as chaves: "entity" (entidade), "value" (valor), "category" (categoria).
-Categorias sugeridas: "pessoal", "trabalho", "preferência", "agenda", "relacionamento", "localização".
-
-Exemplo JSON:
-[
-    {{"entity": "Nome do Usuário", "value": "João Silva", "category": "pessoal"}},
-    {{"entity": "Time de Futebol", "value": "Flamengo", "category": "preferência"}},
-    {{"entity": "Reunião", "value": "Terça às 17h com a equipe de TI", "category": "agenda"}}
-]
-"""
-
-SUMMARY_PROMPT = """
-Resuma o registro de conversas a seguir em formato de "Newsletter Diária".
-O log contém conversas de diferentes chats, separados por cabeçalhos.
-
-Para cada conversa (ou grupo de conversas):
-1. Identifique o tema principal.
-2. Destaque decisões, ideias e o "clima" da conversa.
-3. Liste tarefas ou compromissos se houver.
-
-O resumo final deve ser uma visão geral do dia, em Português do Brasil, profissional mas leve.
-Use emojis e seções claras.
-
-Log das Conversas:
-{text_log}
-"""
-
-CONVERSATION_SYSTEM_PROMPT = """
-Você é um assistente pessoal inteligente, amigável e natural, que se comunica em Português do Brasil.
-Seu objetivo é conversar como um humano (amigo ou colega prestativo), ser útil e lembrar de detalhes importantes.
-
-Diretrizes:
-1. **Naturalidade**: Não seja robótico. Use gírias leves se o contexto permitir, mas mantenha a educação.
-2. **Memória**: Use ativamente os "Fatos Conhecidos" e o "Histórico Recente" para personalizar sua resposta. Mencione fatos lembrados quando relevante para mostrar que você se importa.
-3. **Identidade**: Observe os nomes dos participantes no histórico. Use o nome do usuário para tornar a conversa mais pessoal. Se o "sender_name" for você (o bot), entenda que foi algo que você disse.
-4. **Contexto**: Responda diretamente à última mensagem, mas mantenha a continuidade do assunto.
-5. **Concisão**: Evite textos muito longos, a menos que solicitado ou necessário para explicar algo.
-
-Fatos Conhecidos sobre este chat (Use estes dados para personalizar a conversa):
-{facts_text}
-
-Histórico Recente da Conversa:
-{history_text}
-
-Última mensagem: {user_message}
-
-Sua Resposta (em Português):
-"""
 
 
 class AIService:
@@ -91,9 +40,17 @@ class AIService:
 
         try:
             response = await self.model.generate_content_async(prompt)
-            # Basic cleanup to ensure JSON parsing
-            clean_text = response.text.replace("```json", "").replace("```", "").strip()
-            # Handle case where LLM might add extra text
+            raw_text = response.text.strip()
+
+            # Remove Markdown Code Blocks if present
+            # Regex to capture content inside ```json ... ``` or just ``` ... ```
+            match = re.search(r"```(?:json)?(.*?)```", raw_text, re.DOTALL)
+            if match:
+                clean_text = match.group(1).strip()
+            else:
+                clean_text = raw_text
+
+            # Further cleanup just in case
             start_idx = clean_text.find("[")
             end_idx = clean_text.rfind("]")
             if start_idx != -1 and end_idx != -1:
@@ -104,7 +61,7 @@ class AIService:
                 return facts
             return []
         except Exception as e:
-            logger.error(f"Error extracting facts: {e}")
+            logger.error(f"Error extracting facts: {e}. Raw text: {response.text if 'response' in locals() else 'N/A'}")
             return []
 
     async def summarize_conversations(self, data: Any) -> str:
@@ -146,7 +103,7 @@ class AIService:
     def _get_context(self, chat_id: int):
         """Helper to fetch DB context synchronously."""
         with Session(engine) as session:
-            # Get last 20 messages for better flow (increased from 15)
+            # Get last 20 messages for better flow
             statement = (
                 select(Message)
                 .where(Message.chat_id == chat_id)
@@ -156,12 +113,12 @@ class AIService:
             history = session.exec(statement).all()
             history = sorted(history, key=lambda x: x.date)  # sort back to chrono order
 
-            # Get relevant facts
+            # Get relevant facts (Increased to 60 for better context window usage)
             facts = session.exec(
                 select(Fact)
                 .where(Fact.chat_id == chat_id)
                 .order_by(Fact.created_at.desc())
-                .limit(30)
+                .limit(60)
             ).all()
             return history, facts
 
