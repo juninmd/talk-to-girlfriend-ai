@@ -26,6 +26,10 @@ class ReportingService:
         """
         logger.info("Generating daily report...")
 
+        if not REPORT_CHANNEL_ID:
+            logger.warning("Daily Report skipped: REPORT_CHANNEL_ID not set in environment.")
+            return
+
         # 1. Fetch messages from last 24h (Non-blocking)
         messages = await asyncio.to_thread(self._fetch_messages_for_report)
 
@@ -71,26 +75,21 @@ class ReportingService:
 
         # 3. Send to Telegram Channel
         try:
-            if REPORT_CHANNEL_ID:
+            try:
+                # Try sending directly if ID is valid
+                # For channels/supergroups, we usually need the entity cached or access hash
+                # If we can't find it, we try to get it first
                 try:
-                    # Try sending directly if ID is valid
-                    # For channels/supergroups, we usually need the entity cached or access hash
-                    # If we can't find it, we try to get it first
-                    try:
-                        entity = await client.get_entity(REPORT_CHANNEL_ID)
-                        await client.send_message(entity, report_text)
-                        logger.info(f"Daily report sent successfully to {REPORT_CHANNEL_ID}.")
-                    except ValueError:
-                        # Sometimes get_entity fails if not seen before
-                        logger.warning(
-                            f"Could not find entity for {REPORT_CHANNEL_ID}. Ensure bot is admin or joined."
-                        )
-                except Exception as entity_err:
-                    logger.error(f"Could not resolve channel {REPORT_CHANNEL_ID}: {entity_err}")
-            else:
-                logger.warning(
-                    f"REPORT_CHANNEL_ID not set. Report generated but not sent:\n{report_text}"
-                )
+                    entity = await client.get_entity(REPORT_CHANNEL_ID)
+                    await client.send_message(entity, report_text)
+                    logger.info(f"Daily report sent successfully to {REPORT_CHANNEL_ID}.")
+                except ValueError:
+                    # Sometimes get_entity fails if not seen before
+                    logger.warning(
+                        f"Could not find entity for {REPORT_CHANNEL_ID}. Ensure bot is admin or joined."
+                    )
+            except Exception as entity_err:
+                logger.error(f"Could not resolve channel {REPORT_CHANNEL_ID}: {entity_err}")
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")
 
