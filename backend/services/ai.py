@@ -113,12 +113,12 @@ class AIService:
             history = session.exec(statement).all()
             history = sorted(history, key=lambda x: x.date)  # sort back to chrono order
 
-            # Get relevant facts (Increased to 60 for better context window usage)
+            # Get relevant facts (Increased to 300 for better context window usage)
             facts = session.exec(
                 select(Fact)
                 .where(Fact.chat_id == chat_id)
                 .order_by(Fact.created_at.desc())
-                .limit(60)
+                .limit(300)
             ).all()
             return history, facts
 
