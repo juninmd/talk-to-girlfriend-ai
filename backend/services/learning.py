@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from backend.client import client
 from backend.database import engine, Message, Fact
 from backend.services.ai import ai_service
+from backend.config import LEARNING_BATCH_SIZE, LEARNING_DELAY
 import logging
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,7 @@ class LearningService:
             ]
 
             # Analyze in batches to avoid overwhelming the API
-            batch_size = 5
+            batch_size = LEARNING_BATCH_SIZE
             total_batches = (len(relevant_msgs) + batch_size - 1) // batch_size
 
             for i in range(0, len(relevant_msgs), batch_size):
@@ -76,11 +77,11 @@ class LearningService:
                 batch = relevant_msgs[i : i + batch_size]
                 tasks = []
                 for m in batch:
-                    tasks.append(self._analyze_and_extract(m.message, m.id, chat_id))
+                    tasks.append(self._analyze_and_extract_safe(m.message, m.id, chat_id))
 
                 # Run batch and wait a bit
                 await asyncio.gather(*tasks)
-                await asyncio.sleep(1)  # Rate limit protection
+                await asyncio.sleep(LEARNING_DELAY)  # Rate limit protection
 
             logger.info(f"Ingested {count} messages for chat {chat_id}. Analyzed {len(relevant_msgs)} for facts.")
             return count
@@ -201,6 +202,13 @@ class LearningService:
                 logger.info(f"Learned {len(facts)} new facts from message {source_msg_id}")
         except Exception as e:
             logger.error(f"Error in fact extraction: {e}")
+
+    async def _analyze_and_extract_safe(self, text: str, source_msg_id: int, chat_id: int):
+        """Wrapper for extraction that catches all exceptions to prevent batch failure."""
+        try:
+            await self._analyze_and_extract(text, source_msg_id, chat_id)
+        except Exception as e:
+            logger.error(f"Failed to process message {source_msg_id} for learning: {e}")
 
     async def _generate_and_send_reply(self, chat_id: int, user_message: str):
         """Generates a response using AI and sends it."""

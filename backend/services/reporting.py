@@ -30,6 +30,14 @@ class ReportingService:
             logger.warning("Daily Report skipped: REPORT_CHANNEL_ID not set in environment.")
             return
 
+        # Validate Channel ID access early
+        try:
+            # Check if we can access the entity. If not, we might fail sending later, so we warn early.
+            # But we don't abort because get_entity might need a network call that succeeds later.
+            await client.get_entity(REPORT_CHANNEL_ID)
+        except Exception as e:
+            logger.warning(f"Could not verify REPORT_CHANNEL_ID access early: {e}. Attempting report anyway.")
+
         # 1. Fetch messages from last 24h (Non-blocking)
         messages = await asyncio.to_thread(self._fetch_messages_for_report)
 
