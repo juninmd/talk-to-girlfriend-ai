@@ -24,7 +24,8 @@ class AIService:
     def __init__(self):
         self.model = None
         if GOOGLE_API_KEY:
-            self.model = genai.GenerativeModel("gemini-pro")
+            # Using Gemini 1.5 Flash for better performance and cost-efficiency
+            self.model = genai.GenerativeModel("gemini-1.5-flash")
         else:
             logger.warning("GOOGLE_API_KEY not set. AI features disabled.")
 
