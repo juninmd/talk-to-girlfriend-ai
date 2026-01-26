@@ -1,7 +1,7 @@
 import json
 import logging
 import asyncio
-import re
+from datetime import datetime, timezone
 import google.generativeai as genai
 from typing import List, Dict, Any
 from sqlmodel import Session, select
@@ -40,24 +40,21 @@ class AIService:
         prompt = FACT_EXTRACTION_PROMPT.format(text=text)
 
         try:
-            response = await self.model.generate_content_async(prompt)
+            # Request JSON output directly
+            response = await self.model.generate_content_async(
+                prompt,
+                generation_config={"response_mime_type": "application/json"}
+            )
             raw_text = response.text.strip()
 
-            # Remove Markdown Code Blocks if present
-            # Regex to capture content inside ```json ... ``` or just ``` ... ```
-            match = re.search(r"```(?:json)?(.*?)```", raw_text, re.DOTALL)
-            if match:
-                clean_text = match.group(1).strip()
-            else:
-                clean_text = raw_text
+            # With response_mime_type="application/json", it should be clean JSON.
+            # But sometimes it might still wrap in ```json ... ``` (rarely now).
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
 
-            # Further cleanup just in case
-            start_idx = clean_text.find("[")
-            end_idx = clean_text.rfind("]")
-            if start_idx != -1 and end_idx != -1:
-                clean_text = clean_text[start_idx : end_idx + 1]
-
-            facts = json.loads(clean_text)
+            facts = json.loads(raw_text)
             if isinstance(facts, list):
                 return facts
             return []
@@ -123,6 +120,26 @@ class AIService:
             ).all()
             return history, facts
 
+    def _format_relative_time(self, dt: datetime) -> str:
+        """Helper to format datetime relatively (e.g. Today 14:00, Yesterday 10:00)."""
+        now = datetime.now(timezone.utc)
+        # Ensure dt is aware
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+
+        diff = now.date() - dt.date()
+
+        if diff.days == 0:
+            day_str = "Hoje"
+        elif diff.days == 1:
+            day_str = "Ontem"
+        elif diff.days < 7:
+            day_str = dt.strftime("%A") # Day name
+        else:
+            day_str = dt.strftime("%d/%m")
+
+        return f"{day_str} {dt.strftime('%H:%M')}"
+
     async def generate_natural_response(self, chat_id: int, user_message: str) -> str:
         """
         Generates a natural response using history and facts.
@@ -138,7 +155,7 @@ class AIService:
             history, facts = [], []
 
         history_text = "\n".join(
-            [f"[{m.date.strftime('%d/%m %H:%M')}] {m.sender_name}: {m.text}" for m in history]
+            [f"[{self._format_relative_time(m.date)}] {m.sender_name}: {m.text}" for m in history]
         )
         facts_text = "\n".join([f"- {f.entity_name} ({f.category}): {f.value}" for f in facts])
 
