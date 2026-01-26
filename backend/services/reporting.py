@@ -42,7 +42,7 @@ class ReportingService:
         messages = await asyncio.to_thread(self._fetch_messages_for_report)
 
         if not messages:
-            logger.info("No messages found for today's report.")
+            logger.warning("No messages found for today's report.")
             return
 
         # Group messages by chat_id
