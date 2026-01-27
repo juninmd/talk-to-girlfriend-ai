@@ -1,6 +1,7 @@
 import json
 import logging
 import asyncio
+import re
 from datetime import datetime, timezone
 import google.generativeai as genai
 from typing import List, Dict, Any
@@ -47,12 +48,11 @@ class AIService:
             )
             raw_text = response.text.strip()
 
-            # With response_mime_type="application/json", it should be clean JSON.
-            # But sometimes it might still wrap in ```json ... ``` (rarely now).
-            if raw_text.startswith("```json"):
-                raw_text = raw_text[7:]
-            if raw_text.endswith("```"):
-                raw_text = raw_text[:-3]
+            # Use regex to find the JSON list structure [ ... ]
+            # This handles Markdown blocks (```json ... ```) and any conversational preamble
+            match = re.search(r'\[.*\]', raw_text, re.DOTALL)
+            if match:
+                raw_text = match.group(0)
 
             facts = json.loads(raw_text)
             if isinstance(facts, list):

@@ -92,7 +92,7 @@ class LearningService:
     async def start_listening(self):
         """Registers event handlers for incoming messages."""
         logger.info("Starting LearningService event listener...")
-        self.client.add_event_handler(self.handle_new_message, events.NewMessage)
+        self.client.add_event_handler(self.handle_message_learning, events.NewMessage)
 
     async def _save_message_to_db(self, msg_data):
         """Runs synchronous DB save in a thread."""
@@ -134,10 +134,10 @@ class LearningService:
         except Exception as e:
             logger.error(f"DB Error saving facts: {e}")
 
-    async def handle_new_message(self, event):
+    async def handle_message_learning(self, event):
         """
         Intercepts new messages (incoming and outgoing), saves them to DB,
-        triggers AI analysis for fact extraction, and optionally replies.
+        and triggers AI analysis for fact extraction.
         """
         try:
             chat_id = event.chat_id
@@ -148,10 +148,8 @@ class LearningService:
             is_outgoing = event.message.out
 
             sender_name = "Unknown"
-            is_bot = False
             if event.sender:
                 if isinstance(event.sender, User):
-                    is_bot = event.sender.bot
                     sender_name = (
                         f"{event.sender.first_name} {event.sender.last_name or ''}".strip()
                     )
@@ -180,18 +178,8 @@ class LearningService:
             if text and len(text) > 10 and db_message_id:
                 asyncio.create_task(self._analyze_and_extract(text, db_message_id, chat_id))
 
-            # 3. Auto-Reply (Conversation)
-            # Reply if:
-            # - It's a private chat
-            # - Not outgoing (from me)
-            # - Not from a bot
-            # - Message is not empty
-            if not is_outgoing and event.is_private and not is_bot and text:
-                # Add a "typing" delay to feel natural
-                asyncio.create_task(self._generate_and_send_reply(chat_id, text))
-
         except Exception as e:
-            logger.error(f"Error in handle_new_message: {e}")
+            logger.error(f"Error in handle_message_learning: {e}")
 
     async def _analyze_and_extract(self, text: str, source_msg_id: int, chat_id: int):
         """Extracts facts using AI service and saves them."""
@@ -209,26 +197,6 @@ class LearningService:
             await self._analyze_and_extract(text, source_msg_id, chat_id)
         except Exception as e:
             logger.error(f"Failed to process message {source_msg_id} for learning: {e}")
-
-    async def _generate_and_send_reply(self, chat_id: int, user_message: str):
-        """Generates a response using AI and sends it."""
-        try:
-            # Simulate processing/typing time (min 1 sec, max 4 sec based on length)
-            delay = min(4, max(1, len(user_message) / 50))
-            await asyncio.sleep(delay)
-
-            async with self.client.action(chat_id, "typing"):
-                # Generate response
-                response_text = await ai_service.generate_natural_response(chat_id, user_message)
-
-                # Wait a bit more to simulate typing the response
-                typing_delay = min(5, len(response_text) / 20)
-                await asyncio.sleep(typing_delay)
-
-                if response_text:
-                    await self.client.send_message(chat_id, response_text)
-        except Exception as e:
-            logger.error(f"Error sending reply: {e}")
 
 
 learning_service = LearningService()
