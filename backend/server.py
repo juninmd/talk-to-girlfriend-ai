@@ -3,6 +3,7 @@ import asyncio
 import nest_asyncio
 import sqlite3
 import logging
+from telethon import events
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
@@ -14,6 +15,7 @@ from backend.logging_setup import setup_logging
 # Import new services
 from backend.database import create_db_and_tables
 from backend.services.learning import learning_service
+from backend.services.conversation import conversation_service
 from backend.services.reporting import reporting_service
 
 # Import tools
@@ -333,6 +335,9 @@ async def _main() -> None:
 
         logger.info("Starting Learning Service...")
         await learning_service.start_listening()
+
+        logger.info("Starting Conversation Service...")
+        client.add_event_handler(conversation_service.handle_incoming_message, events.NewMessage)
 
         # Scheduler for reports
         scheduler = AsyncIOScheduler()
