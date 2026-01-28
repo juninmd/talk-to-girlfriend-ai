@@ -7,12 +7,13 @@ import google.generativeai as genai
 from typing import List, Dict, Any
 from sqlmodel import Session, select
 from backend.database import engine, Message, Fact
-from backend.config import GOOGLE_API_KEY
+from backend.config import GOOGLE_API_KEY, AI_CONTEXT_FACT_LIMIT
 from backend.prompts import (
     FACT_EXTRACTION_PROMPT,
     SUMMARY_PROMPT,
     CONVERSATION_SYSTEM_PROMPT,
 )
+from backend.utils import async_retry
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class AIService:
         else:
             logger.warning("GOOGLE_API_KEY not set. AI features disabled.")
 
+    @async_retry(max_attempts=3, delay=1.0)
     async def extract_facts(self, text: str) -> List[Dict[str, Any]]:
         """
         Uses LLM to extract facts from text.
@@ -48,8 +50,12 @@ class AIService:
             )
             raw_text = response.text.strip()
 
+            # Pre-cleaning: remove markdown code blocks
+            # This helps if the model wraps output in ```json ... ``` even with mime_type set
+            raw_text = raw_text.replace("```json", "").replace("```", "")
+
             # Use regex to find the JSON list structure [ ... ]
-            # This handles Markdown blocks (```json ... ```) and any conversational preamble
+            # This handles any conversational preamble
             match = re.search(r'\[.*\]', raw_text, re.DOTALL)
             if match:
                 raw_text = match.group(0)
@@ -60,8 +66,10 @@ class AIService:
             return []
         except Exception as e:
             logger.error(f"Error extracting facts: {e}. Raw text: {response.text if 'response' in locals() else 'N/A'}")
-            return []
+            # Re-raise to trigger retry
+            raise e
 
+    @async_retry(max_attempts=3, delay=2.0)
     async def summarize_conversations(self, data: Any) -> str:
         """
         Summarizes conversations.
@@ -96,7 +104,7 @@ class AIService:
             return response.text
         except Exception as e:
             logger.error(f"Error summarizing: {e}")
-            return "Erro ao gerar resumo."
+            raise e
 
     def _get_context(self, chat_id: int):
         """Helper to fetch DB context synchronously."""
@@ -111,12 +119,12 @@ class AIService:
             history = session.exec(statement).all()
             history = sorted(history, key=lambda x: x.date)  # sort back to chrono order
 
-            # Get relevant facts (Increased to 300 for better context window usage)
+            # Get relevant facts
             facts = session.exec(
                 select(Fact)
                 .where(Fact.chat_id == chat_id)
                 .order_by(Fact.created_at.desc())
-                .limit(300)
+                .limit(AI_CONTEXT_FACT_LIMIT)
             ).all()
             return history, facts
 
@@ -140,6 +148,7 @@ class AIService:
 
         return f"{day_str} {dt.strftime('%H:%M')}"
 
+    @async_retry(max_attempts=2, delay=0.5)
     async def generate_natural_response(self, chat_id: int, user_message: str) -> str:
         """
         Generates a natural response using history and facts.
@@ -168,7 +177,7 @@ class AIService:
             return response.text
         except Exception as e:
             logger.error(f"Error generating response: {e}")
-            return "Desculpe, não consegui processar isso agora."
+            raise e
 
 
 ai_service = AIService()

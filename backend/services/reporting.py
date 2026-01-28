@@ -6,12 +6,13 @@ from backend.database import engine, Message
 from backend.services.ai import ai_service
 from backend.client import client
 from backend.config import REPORT_CHANNEL_ID
+from backend.utils import async_retry
 
 logger = logging.getLogger(__name__)
 
 
 class ReportingService:
-    async def _fetch_messages_for_report(self):
+    def _fetch_messages_for_report(self):
         """Fetches messages in a thread."""
         cutoff = datetime.now(timezone.utc) - timedelta(days=1)
         with Session(engine) as session:
@@ -19,6 +20,7 @@ class ReportingService:
             messages = session.exec(statement).all()
             return messages
 
+    @async_retry(max_attempts=3, delay=5.0)
     async def generate_daily_report(self):
         """
         Generates a summary of all conversations from the last 24 hours
@@ -75,11 +77,23 @@ class ReportingService:
         # Calculate stats
         total_msgs = len(messages)
         unique_chats = len(grouped_msgs)
-        stats_text = f"📊 **Estatísticas:** {total_msgs} mensagens processadas em {unique_chats} conversas ativas."
+
+        stats_text = (
+            f"- **Total de Mensagens:** {total_msgs}\n"
+            f"- **Conversas Ativas:** {unique_chats}"
+        )
 
         # 2. Summarize
         summary = await ai_service.summarize_conversations(final_data)
-        report_text = f"**Relatório Diário de Conversas** 📅 {datetime.now().strftime('%d/%m/%Y')}\n\n{stats_text}\n\n{summary}"
+
+        report_text = f"""# 📅 Relatório Diário de Conversas
+**Data:** {datetime.now().strftime('%d/%m/%Y')}
+
+## 📊 Estatísticas
+{stats_text}
+
+## 📝 Resumo
+{summary}"""
 
         # 3. Send to Telegram Channel
         try:
@@ -98,8 +112,10 @@ class ReportingService:
                     )
             except Exception as entity_err:
                 logger.error(f"Could not resolve channel {REPORT_CHANNEL_ID}: {entity_err}")
+                raise entity_err
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")
+            raise e
 
 
 reporting_service = ReportingService()

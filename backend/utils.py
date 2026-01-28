@@ -1,5 +1,6 @@
 import re
 import datetime
+import asyncio
 from enum import Enum
 from typing import Optional, Union, Any, Dict
 from functools import wraps
@@ -173,3 +174,31 @@ def get_sender_name(message) -> str:
         return full_name if full_name else "Unknown"
     else:
         return "Unknown"
+
+
+def async_retry(max_attempts: int = 3, delay: float = 1.0):
+    """
+    Decorator to retry async functions with exponential backoff.
+    """
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            attempts = 0
+            current_delay = delay
+            while attempts < max_attempts:
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    attempts += 1
+                    if attempts >= max_attempts:
+                        logger.error(f"Function {func.__name__} failed after {max_attempts} attempts. Error: {e}")
+                        raise e
+
+                    logger.warning(
+                        f"Function {func.__name__} failed (Attempt {attempts}/{max_attempts}). "
+                        f"Retrying in {current_delay}s... Error: {e}"
+                    )
+                    await asyncio.sleep(current_delay)
+                    current_delay *= 2  # Exponential backoff
+        return wrapper
+    return decorator
