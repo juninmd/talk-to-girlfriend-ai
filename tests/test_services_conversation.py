@@ -21,6 +21,7 @@ async def test_handle_incoming_message_trigger(service):
     event.message.message = "Hello"
     event.sender = MagicMock(spec=User)
     event.sender.bot = False
+    event.sender.first_name = "TestUser"
     event.chat_id = 123
 
     # We patch the method on the instance `service`
@@ -32,7 +33,7 @@ async def test_handle_incoming_message_trigger(service):
         # Actually, since we mock `_generate_and_send_reply` as AsyncMock, calling it returns a coroutine.
         # create_task(coro) will consume it.
         # But `mock_reply` will record the call.
-        mock_reply.assert_called_once_with(123, "Hello")
+        mock_reply.assert_called_once_with(123, "Hello", "TestUser")
 
 @pytest.mark.asyncio
 async def test_handle_incoming_message_ignore_outgoing(service):
@@ -75,7 +76,7 @@ async def test_generate_and_send_reply(service):
 
         # We need to speed up sleep for tests or patch it
         with patch("asyncio.sleep", new_callable=AsyncMock):
-            await service._generate_and_send_reply(chat_id, user_message)
+            await service._generate_and_send_reply(chat_id, user_message, "TestUser")
 
-        mock_ai.generate_natural_response.assert_called_once_with(chat_id, user_message)
+        mock_ai.generate_natural_response.assert_called_once_with(chat_id, user_message, "TestUser")
         service.client.send_message.assert_called_once_with(chat_id, "Hello there")

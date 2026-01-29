@@ -50,24 +50,33 @@ async def test_ingest_history_flow():
         service = LearningService()
         service.client = mock_client
 
-        # Mock DB save (it's run in thread, so we patch asyncio.to_thread or the method itself if possible)
-        # But ingest_history calls asyncio.to_thread(self._save_message_to_db, ...)
+        # Mock DB interaction for min_id
+        # We need to patch Session to return a context manager that has a session with exec
+        with patch("backend.services.learning.Session") as mock_session_cls:
+            mock_session = MagicMock()
+            mock_session_cls.return_value.__enter__.return_value = mock_session
 
-        with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-            mock_to_thread.return_value = 1  # DB ID
+            # exec().first() should return 0 or None. Let's return None (no history)
+            mock_session.exec.return_value.first.return_value = None
 
-            # Also mock _analyze_and_extract (it's a method on service)
-            service._analyze_and_extract = MagicMock()  # It returns a coroutine/task usually?
-            # Actually ingest_history calls asyncio.create_task(self._analyze_and_extract(...))
-            # So _analyze_and_extract should allow being scheduled.
+            # Mock DB save (it's run in thread, so we patch asyncio.to_thread or the method itself if possible)
+            # But ingest_history calls asyncio.to_thread(self._save_message_to_db, ...)
 
-            # Since create_task expects a coroutine, we need _analyze_and_extract to return one.
-            async def dummy_analyze(*args, **kwargs):
-                pass
+            with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
+                mock_to_thread.return_value = 1  # DB ID
 
-            service._analyze_and_extract = dummy_analyze
+                # Also mock _analyze_and_extract_safe (it's a method on service)
+                # Actually ingest_history calls asyncio.create_task(self._analyze_and_extract_safe(...))
+                # So _analyze_and_extract_safe should allow being scheduled.
 
-            count = await service.ingest_history(123, limit=5)
+                # Since create_task expects a coroutine, we need _analyze_and_extract_safe to return one.
+                async def dummy_analyze(*args, **kwargs):
+                    pass
 
-            assert count == 1
-            mock_client.get_messages.assert_called_with("dummy_entity", limit=5)
+                # Patching the method on the instance
+                service._analyze_and_extract_safe = MagicMock(side_effect=dummy_analyze)
+
+                count = await service.ingest_history(123, limit=5)
+
+                assert count == 1
+                mock_client.get_messages.assert_called_with("dummy_entity", limit=5, min_id=0)

@@ -149,7 +149,7 @@ class AIService:
         return f"{day_str} {dt.strftime('%H:%M')}"
 
     @async_retry(max_attempts=2, delay=0.5)
-    async def generate_natural_response(self, chat_id: int, user_message: str) -> str:
+    async def generate_natural_response(self, chat_id: int, user_message: str, sender_name: str = "User") -> str:
         """
         Generates a natural response using history and facts.
         """
@@ -168,8 +168,11 @@ class AIService:
         )
         facts_text = "\n".join([f"- {f.entity_name} ({f.category}): {f.value}" for f in facts])
 
+        # Inject sender name into the message context
+        full_user_message = f"User {sender_name} says: {user_message}"
+
         prompt = CONVERSATION_SYSTEM_PROMPT.format(
-            facts_text=facts_text, history_text=history_text, user_message=user_message
+            facts_text=facts_text, history_text=history_text, user_message=full_user_message
         )
 
         try:

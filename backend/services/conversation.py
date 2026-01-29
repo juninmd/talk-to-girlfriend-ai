@@ -28,13 +28,21 @@ class ConversationService:
             text = event.message.message
             chat_id = event.chat_id
 
+            # Determine sender name
+            sender_name = "User"
+            if event.sender:
+                if isinstance(event.sender, User):
+                    sender_name = event.sender.first_name or "User"
+                elif hasattr(event.sender, "title"):
+                    sender_name = event.sender.title
+
             # Trigger reply
-            asyncio.create_task(self._generate_and_send_reply(chat_id, text))
+            asyncio.create_task(self._generate_and_send_reply(chat_id, text, sender_name))
 
         except Exception as e:
             logger.error(f"Error in ConversationService handler: {e}")
 
-    async def _generate_and_send_reply(self, chat_id: int, user_message: str):
+    async def _generate_and_send_reply(self, chat_id: int, user_message: str, sender_name: str):
         """Generates a response using AI and sends it."""
         try:
             # Simulate processing/reading time
@@ -43,7 +51,7 @@ class ConversationService:
 
             async with self.client.action(chat_id, "typing"):
                 # Generate response
-                response_text = await ai_service.generate_natural_response(chat_id, user_message)
+                response_text = await ai_service.generate_natural_response(chat_id, user_message, sender_name)
 
                 # Wait a bit more to simulate typing the response
                 # Allow slightly longer delay for typing long responses

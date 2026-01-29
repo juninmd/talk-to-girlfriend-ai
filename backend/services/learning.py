@@ -1,7 +1,7 @@
 import asyncio
 from telethon import events
 from telethon.tl.types import User
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 from datetime import datetime, timezone
 from backend.client import client
 from backend.database import engine, Message, Fact
@@ -20,9 +20,21 @@ class LearningService:
         """Fetches past messages and saves them to DB. Learns from recent ones."""
         logger.info(f"Starting history ingestion for chat {chat_id}, limit={limit}...")
         try:
+            # Determine the last synced message ID to avoid duplicates
+            min_id = 0
+            with Session(engine) as session:
+                statement = select(func.max(Message.telegram_message_id)).where(Message.chat_id == chat_id)
+                result = session.exec(statement).first()
+                if result:
+                    min_id = result
+                    logger.info(f"Found existing history for chat {chat_id}. Resuming from ID {min_id}.")
+
             # We need to resolve the entity first
             entity = await self.client.get_entity(chat_id)
-            messages = await self.client.get_messages(entity, limit=limit)
+
+            # Fetch messages strictly newer than min_id
+            # Note: Telethon get_messages with min_id fetches messages with ID > min_id
+            messages = await self.client.get_messages(entity, limit=limit, min_id=min_id)
 
             # Convert to list to iterate
             messages_list = list(messages)
