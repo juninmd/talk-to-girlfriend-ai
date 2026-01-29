@@ -3,10 +3,12 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.tools import contacts
 
+
 @pytest.fixture
 def mock_client():
     with patch("backend.tools.contacts.client") as mock:
         yield mock
+
 
 @pytest.mark.asyncio
 async def test_list_contacts(mock_client):
@@ -26,6 +28,7 @@ async def test_list_contacts(mock_client):
     assert "Alice Doe" in result
     assert "123" in result
 
+
 @pytest.mark.asyncio
 async def test_search_contacts(mock_client):
     mock_result = MagicMock()
@@ -40,6 +43,7 @@ async def test_search_contacts(mock_client):
     assert "Bob" in result
     assert "456" in result
 
+
 @pytest.mark.asyncio
 async def test_add_contact(mock_client):
     mock_result = MagicMock()
@@ -50,10 +54,11 @@ async def test_add_contact(mock_client):
     result = await contacts.add_contact("12345", "Charlie")
     assert "added successfully" in result
 
+
 @pytest.mark.asyncio
 async def test_delete_contact(mock_client):
     mock_client.get_entity = AsyncMock(return_value="user_obj")
-    mock_client.side_effect = AsyncMock() # For the delete request
+    mock_client.side_effect = AsyncMock()  # For the delete request
 
     result = await contacts.delete_contact(user_id=123)
     assert "deleted" in result

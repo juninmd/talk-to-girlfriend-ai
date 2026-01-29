@@ -24,7 +24,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Telegram API Bridge", description="HTTP API for Telegram operations", lifespan=lifespan
+    title="Telegram API Bridge",
+    description="HTTP API for Telegram operations",
+    lifespan=lifespan,
 )
 
 app.add_middleware(

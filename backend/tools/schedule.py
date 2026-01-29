@@ -5,7 +5,9 @@ from backend.utils import log_and_format_error, validate_id
 
 
 @validate_id("chat_id")
-async def schedule_message(chat_id: Union[int, str], message: str, minutes_from_now: int) -> str:
+async def schedule_message(
+    chat_id: Union[int, str], message: str, minutes_from_now: int
+) -> str:
     try:
         if minutes_from_now < 1:
             return "Error: minutes_from_now must be at least 1"

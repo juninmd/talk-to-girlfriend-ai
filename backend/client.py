@@ -44,13 +44,19 @@ class MockClient:
 
 def get_client():
     if not TELEGRAM_API_ID or not TELEGRAM_API_HASH:
-        logger.warning("TELEGRAM_API_ID or TELEGRAM_API_HASH not found. Using MockClient.")
+        logger.warning(
+            "TELEGRAM_API_ID or TELEGRAM_API_HASH not found. Using MockClient."
+        )
         return MockClient()
 
     if SESSION_STRING:
-        return TelegramClient(StringSession(SESSION_STRING), TELEGRAM_API_ID, TELEGRAM_API_HASH)
+        return TelegramClient(
+            StringSession(SESSION_STRING), TELEGRAM_API_ID, TELEGRAM_API_HASH
+        )
     else:
-        return TelegramClient(TELEGRAM_SESSION_NAME, TELEGRAM_API_ID, TELEGRAM_API_HASH)
+        return TelegramClient(
+            TELEGRAM_SESSION_NAME, TELEGRAM_API_ID, TELEGRAM_API_HASH
+        )
 
 
 client = get_client()

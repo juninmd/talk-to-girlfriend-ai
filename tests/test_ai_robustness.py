@@ -7,7 +7,8 @@ os.environ["TELEGRAM_API_ID"] = "123"
 os.environ["TELEGRAM_API_HASH"] = "abc"
 os.environ["GOOGLE_API_KEY"] = "xyz"
 
-from backend.services.ai import AIService
+from backend.services.ai import AIService  # noqa: E402
+
 
 @pytest.mark.asyncio
 async def test_extract_facts_with_markdown_blocks():
@@ -35,6 +36,7 @@ async def test_extract_facts_with_markdown_blocks():
     assert len(facts) == 2
     assert facts[0]["value"] == "Apollo"
     assert facts[1]["value"] == "Guitar"
+
 
 @pytest.mark.asyncio
 async def test_extract_facts_with_generic_markdown_blocks():

@@ -21,7 +21,7 @@ Formato de Saída (JSON Array):
 [
     {{"entity": "Nome ou Tópico", "value": "Detalhe específico", "category": "pessoal|trabalho|preferencia|agenda|local|tech|opiniao|relacionamento"}}
 ]
-"""
+"""  # noqa: E501
 
 # Prompt para Resumo Diário (Newsletter/Relatório)
 SUMMARY_PROMPT = """

@@ -3,10 +3,12 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.tools import stickers
 
+
 @pytest.fixture
 def mock_client():
     with patch("backend.tools.stickers.client") as mock:
         yield mock
+
 
 @pytest.mark.asyncio
 async def test_get_sticker_sets(mock_client):
@@ -19,14 +21,18 @@ async def test_get_sticker_sets(mock_client):
     result = await stickers.get_sticker_sets()
     assert "Pack1" in result
 
+
 @pytest.mark.asyncio
 async def test_send_sticker(mock_client):
     with patch("os.path.isfile", return_value=True):
         mock_client.get_entity = AsyncMock(return_value="peer")
         mock_client.send_file = AsyncMock()
 
-        result = await stickers.send_sticker(chat_id=123, file_path="sticker.webp")
+        result = await stickers.send_sticker(
+            chat_id=123, file_path="sticker.webp"
+        )
         assert "Sticker sent" in result
+
 
 @pytest.mark.asyncio
 async def test_get_gif_search(mock_client):
@@ -46,6 +52,7 @@ async def test_get_gif_search(mock_client):
 
     result = await stickers.get_gif_search("fun")
     assert "999" in result
+
 
 @pytest.mark.asyncio
 async def test_send_gif(mock_client):

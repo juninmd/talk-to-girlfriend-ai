@@ -46,7 +46,7 @@ class AIService:
             # Request JSON output directly
             response = await self.model.generate_content_async(
                 prompt,
-                generation_config={"response_mime_type": "application/json"}
+                generation_config={"response_mime_type": "application/json"},
             )
             raw_text = response.text.strip()
 
@@ -56,7 +56,7 @@ class AIService:
 
             # Use regex to find the JSON list structure [ ... ]
             # This handles any conversational preamble
-            match = re.search(r'\[.*\]', raw_text, re.DOTALL)
+            match = re.search(r"\[.*\]", raw_text, re.DOTALL)
             if match:
                 raw_text = match.group(0)
 
@@ -65,7 +65,8 @@ class AIService:
                 return facts
             return []
         except Exception as e:
-            logger.error(f"Error extracting facts: {e}. Raw text: {response.text if 'response' in locals() else 'N/A'}")
+            raw_text = response.text if "response" in locals() else "N/A"
+            logger.error(f"Error extracting facts: {e}. Raw text: {raw_text}")
             # Re-raise to trigger retry
             raise e
 
@@ -82,17 +83,26 @@ class AIService:
 
         text_log = ""
 
-        if isinstance(data, list) and all(isinstance(m, Message) for m in data):
+        if isinstance(data, list) and all(
+            isinstance(m, Message) for m in data
+        ):
             # Flat list
-            text_log = "\n".join([f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}" for m in data])
+            text_log = "\n".join(
+                [
+                    f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}"
+                    for m in data
+                ]
+            )
         elif isinstance(data, dict):
             # Grouped dict
             chunks = []
             for chat_name, msgs in data.items():
                 chunks.append(f"--- Chat: {chat_name} ---")
                 for m in msgs:
-                    chunks.append(f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}")
-                chunks.append("") # Empty line
+                    chunks.append(
+                        f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}"
+                    )
+                chunks.append("")  # Empty line
             text_log = "\n".join(chunks)
         else:
             return "Formato de dados inválido para resumo."
@@ -117,7 +127,9 @@ class AIService:
                 .limit(20)
             )
             history = session.exec(statement).all()
-            history = sorted(history, key=lambda x: x.date)  # sort back to chrono order
+            history = sorted(
+                history, key=lambda x: x.date
+            )  # sort back to chrono order
 
             # Get relevant facts
             facts = session.exec(
@@ -142,14 +154,16 @@ class AIService:
         elif diff.days == 1:
             day_str = "Ontem"
         elif diff.days < 7:
-            day_str = dt.strftime("%A") # Day name
+            day_str = dt.strftime("%A")  # Day name
         else:
             day_str = dt.strftime("%d/%m")
 
         return f"{day_str} {dt.strftime('%H:%M')}"
 
     @async_retry(max_attempts=2, delay=0.5)
-    async def generate_natural_response(self, chat_id: int, user_message: str, sender_name: str = "User") -> str:
+    async def generate_natural_response(
+        self, chat_id: int, user_message: str, sender_name: str = "User"
+    ) -> str:
         """
         Generates a natural response using history and facts.
         """
@@ -158,21 +172,30 @@ class AIService:
 
         # 1. Retrieve Context (Non-blocking)
         try:
-            history, facts = await asyncio.to_thread(self._get_context, chat_id)
+            history, facts = await asyncio.to_thread(
+                self._get_context, chat_id
+            )
         except Exception as e:
             logger.error(f"Error fetching context: {e}")
             history, facts = [], []
 
         history_text = "\n".join(
-            [f"[{self._format_relative_time(m.date)}] {m.sender_name}: {m.text}" for m in history]
+            [
+                f"[{self._format_relative_time(m.date)}] {m.sender_name}: {m.text}"
+                for m in history
+            ]
         )
-        facts_text = "\n".join([f"- {f.entity_name} ({f.category}): {f.value}" for f in facts])
+        facts_text = "\n".join(
+            [f"- {f.entity_name} ({f.category}): {f.value}" for f in facts]
+        )
 
         # Inject sender name into the message context
         full_user_message = f"User {sender_name} says: {user_message}"
 
         prompt = CONVERSATION_SYSTEM_PROMPT.format(
-            facts_text=facts_text, history_text=history_text, user_message=full_user_message
+            facts_text=facts_text,
+            history_text=history_text,
+            user_message=full_user_message,
         )
 
         try:

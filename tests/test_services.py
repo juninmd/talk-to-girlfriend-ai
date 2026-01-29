@@ -4,13 +4,16 @@ from datetime import datetime
 from backend.services.ai import ai_service
 from backend.services.reporting import reporting_service
 
+
 @pytest.mark.asyncio
 async def test_ai_service_extract_facts():
     # Mock the model
     mock_model = AsyncMock()
     mock_response = MagicMock()
     # Return a clean JSON list
-    mock_response.text = '[{"entity": "Test", "value": "Value", "category": "test"}]'
+    mock_response.text = (
+        '[{"entity": "Test", "value": "Value", "category": "test"}]'
+    )
     mock_model.generate_content_async.return_value = mock_response
 
     # Inject mock
@@ -23,6 +26,7 @@ async def test_ai_service_extract_facts():
         assert facts[0]["entity"] == "Test"
     finally:
         ai_service.model = original_model
+
 
 @pytest.mark.asyncio
 async def test_ai_service_extract_facts_with_markdown():
@@ -42,13 +46,21 @@ async def test_ai_service_extract_facts_with_markdown():
     finally:
         ai_service.model = original_model
 
+
 @pytest.mark.asyncio
 async def test_reporting_service_generate_daily_report():
     # Mock REPORT_CHANNEL_ID if needed, but we can patch it or rely on env
-    with patch("backend.services.reporting.REPORT_CHANNEL_ID", 123456), \
-         patch("backend.services.reporting.client", new_callable=AsyncMock) as mock_client, \
-         patch("backend.services.reporting.Session") as mock_session_cls, \
-         patch("backend.services.ai.ai_service.summarize_conversations", new_callable=AsyncMock) as mock_summarize:
+    with (
+        patch("backend.services.reporting.REPORT_CHANNEL_ID", 123456),
+        patch(
+            "backend.services.reporting.client", new_callable=AsyncMock
+        ) as mock_client,
+        patch("backend.services.reporting.Session") as mock_session_cls,
+        patch(
+            "backend.services.ai.ai_service.summarize_conversations",
+            new_callable=AsyncMock,
+        ) as mock_summarize,
+    ):
 
         # Mock fetch messages
         mock_session = MagicMock()

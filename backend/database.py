@@ -30,7 +30,9 @@ class Fact(SQLModel, table=True):
     value: str
     category: str = "general"  # personal, work, preference, etc.
     source_message_id: Optional[int] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
 
 
 def create_db_and_tables():

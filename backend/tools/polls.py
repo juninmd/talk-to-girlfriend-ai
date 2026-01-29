@@ -1,7 +1,12 @@
 import random
 from datetime import datetime
 from telethon import functions
-from telethon.tl.types import InputMediaPoll, Poll, PollAnswer, TextWithEntities
+from telethon.tl.types import (
+    InputMediaPoll,
+    Poll,
+    PollAnswer,
+    TextWithEntities,
+)
 from backend.client import client
 from backend.utils import log_and_format_error
 
@@ -25,15 +30,20 @@ async def create_poll(
         close_date_obj = None
         if close_date:
             try:
-                close_date_obj = datetime.fromisoformat(close_date.replace("Z", "+00:00"))
+                close_date_obj = datetime.fromisoformat(
+                    close_date.replace("Z", "+00:00")
+                )
             except ValueError:
-                return f"Invalid close_date format. Use YYYY-MM-DD HH:MM:SS format."
+                return "Invalid close_date format. Use YYYY-MM-DD HH:MM:SS format."
 
         poll = Poll(
             id=random.randint(0, 2**63 - 1),
             question=TextWithEntities(text=question, entities=[]),
             answers=[
-                PollAnswer(text=TextWithEntities(text=option, entities=[]), option=bytes([i]))
+                PollAnswer(
+                    text=TextWithEntities(text=option, entities=[]),
+                    option=bytes([i]),
+                )
                 for i, option in enumerate(options)
             ],
             multiple_choice=multiple_choice,

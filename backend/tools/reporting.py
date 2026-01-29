@@ -1,5 +1,6 @@
 from backend.services.reporting import reporting_service
 
+
 async def generate_daily_report_now() -> str:
     """
     Manually triggers the generation and sending of the daily report.

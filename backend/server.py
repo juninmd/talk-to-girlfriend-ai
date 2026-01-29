@@ -9,7 +9,6 @@ from mcp.types import ToolAnnotations
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from backend.client import client
-from backend.utils import log_and_format_error
 from backend.logging_setup import setup_logging
 
 # Import new services
@@ -49,7 +48,9 @@ mcp = FastMCP("telegram")
 mcp.add_tool(
     learning.learn_from_chat,
     annotations=ToolAnnotations(
-        title="Learn From Chat History", openWorldHint=True, destructiveHint=True
+        title="Learn From Chat History",
+        openWorldHint=True,
+        destructiveHint=True,
     ),
 )
 
@@ -57,30 +58,42 @@ mcp.add_tool(
 mcp.add_tool(
     reporting.generate_daily_report_now,
     annotations=ToolAnnotations(
-        title="Generate Daily Report Now", openWorldHint=True, destructiveHint=True
+        title="Generate Daily Report Now",
+        openWorldHint=True,
+        destructiveHint=True,
     ),
 )
 
 # Chat Tools
 mcp.add_tool(
     chat.get_chats,
-    annotations=ToolAnnotations(title="Get Chats", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Chats", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     chat.list_chats,
-    annotations=ToolAnnotations(title="List Chats", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="List Chats", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     chat.get_chat,
-    annotations=ToolAnnotations(title="Get Chat", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Chat", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     chat.leave_chat,
-    annotations=ToolAnnotations(title="Leave Chat", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Leave Chat", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     chat.get_invite_link,
-    annotations=ToolAnnotations(title="Get Invite Link", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Invite Link", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     chat.join_chat_by_link,
@@ -90,31 +103,45 @@ mcp.add_tool(
 )
 mcp.add_tool(
     chat.create_group,
-    annotations=ToolAnnotations(title="Create Group", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Create Group", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     chat.mute_chat,
-    annotations=ToolAnnotations(title="Mute Chat", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Mute Chat", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     chat.unmute_chat,
-    annotations=ToolAnnotations(title="Unmute Chat", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Unmute Chat", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     chat.archive_chat,
-    annotations=ToolAnnotations(title="Archive Chat", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Archive Chat", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     chat.unarchive_chat,
-    annotations=ToolAnnotations(title="Unarchive Chat", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Unarchive Chat", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     chat.edit_chat_title,
-    annotations=ToolAnnotations(title="Edit Chat Title", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Edit Chat Title", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     chat.edit_chat_photo,
-    annotations=ToolAnnotations(title="Edit Chat Photo", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Edit Chat Photo", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     chat.delete_chat_photo,
@@ -126,33 +153,47 @@ mcp.add_tool(
 # Contact Tools
 mcp.add_tool(
     contacts.list_contacts,
-    annotations=ToolAnnotations(title="List Contacts", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="List Contacts", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     contacts.search_contacts,
-    annotations=ToolAnnotations(title="Search Contacts", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Search Contacts", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     contacts.add_contact,
-    annotations=ToolAnnotations(title="Add Contact", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Add Contact", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     contacts.delete_contact,
-    annotations=ToolAnnotations(title="Delete Contact", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Delete Contact", openWorldHint=True, destructiveHint=True
+    ),
 )
 
 # Message Tools
 mcp.add_tool(
     messages.get_messages,
-    annotations=ToolAnnotations(title="Get Messages", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Messages", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     messages.send_message,
-    annotations=ToolAnnotations(title="Send Message", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Send Message", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     messages.list_messages,
-    annotations=ToolAnnotations(title="List Messages", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="List Messages", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     messages.reply_to_message,
@@ -162,35 +203,49 @@ mcp.add_tool(
 )
 mcp.add_tool(
     messages.delete_message,
-    annotations=ToolAnnotations(title="Delete Message", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Delete Message", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     messages.pin_message,
-    annotations=ToolAnnotations(title="Pin Message", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Pin Message", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     messages.unpin_message,
-    annotations=ToolAnnotations(title="Unpin Message", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Unpin Message", openWorldHint=True, destructiveHint=True
+    ),
 )
 
 # Media Tools
 mcp.add_tool(
     media.send_file,
-    annotations=ToolAnnotations(title="Send File", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Send File", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     media.download_media,
-    annotations=ToolAnnotations(title="Download Media", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Download Media", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     media.send_voice,
-    annotations=ToolAnnotations(title="Send Voice", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Send Voice", openWorldHint=True, destructiveHint=True
+    ),
 )
 
 # Profile Tools
 mcp.add_tool(
     profile.update_profile,
-    annotations=ToolAnnotations(title="Update Profile", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Update Profile", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     profile.set_profile_photo,
@@ -202,31 +257,45 @@ mcp.add_tool(
 # Admin Tools
 mcp.add_tool(
     admin.promote_admin,
-    annotations=ToolAnnotations(title="Promote Admin", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Promote Admin", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     admin.demote_admin,
-    annotations=ToolAnnotations(title="Demote Admin", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Demote Admin", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     admin.ban_user,
-    annotations=ToolAnnotations(title="Ban User", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Ban User", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     admin.unban_user,
-    annotations=ToolAnnotations(title="Unban User", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Unban User", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     admin.get_admins,
-    annotations=ToolAnnotations(title="Get Admins", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Admins", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     admin.get_banned_users,
-    annotations=ToolAnnotations(title="Get Banned Users", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Banned Users", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     admin.get_recent_actions,
-    annotations=ToolAnnotations(title="Get Recent Actions", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Recent Actions", openWorldHint=True, readOnlyHint=True
+    ),
 )
 
 # Schedule Tools
@@ -240,45 +309,63 @@ mcp.add_tool(
 # Polls Tools
 mcp.add_tool(
     polls.create_poll,
-    annotations=ToolAnnotations(title="Create Poll", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Create Poll", openWorldHint=True, destructiveHint=True
+    ),
 )
 
 # Drafts Tools
 mcp.add_tool(
     drafts.save_draft,
-    annotations=ToolAnnotations(title="Save Draft", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Save Draft", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     drafts.get_drafts,
-    annotations=ToolAnnotations(title="Get Drafts", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Drafts", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     drafts.clear_draft,
-    annotations=ToolAnnotations(title="Clear Draft", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Clear Draft", openWorldHint=True, destructiveHint=True
+    ),
 )
 
 # Stickers/GIFs Tools
 mcp.add_tool(
     stickers.get_sticker_sets,
-    annotations=ToolAnnotations(title="Get Sticker Sets", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Sticker Sets", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     stickers.send_sticker,
-    annotations=ToolAnnotations(title="Send Sticker", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Send Sticker", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     stickers.get_gif_search,
-    annotations=ToolAnnotations(title="Get Gif Search", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Gif Search", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     stickers.send_gif,
-    annotations=ToolAnnotations(title="Send Gif", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Send Gif", openWorldHint=True, destructiveHint=True
+    ),
 )
 
 # Bot Tools
 mcp.add_tool(
     bots.get_bot_info,
-    annotations=ToolAnnotations(title="Get Bot Info", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Bot Info", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     bots.set_bot_commands,
@@ -290,11 +377,15 @@ mcp.add_tool(
 # Reaction Tools
 mcp.add_tool(
     reactions.send_reaction,
-    annotations=ToolAnnotations(title="Send Reaction", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Send Reaction", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     reactions.remove_reaction,
-    annotations=ToolAnnotations(title="Remove Reaction", openWorldHint=True, destructiveHint=True),
+    annotations=ToolAnnotations(
+        title="Remove Reaction", openWorldHint=True, destructiveHint=True
+    ),
 )
 mcp.add_tool(
     reactions.get_message_reactions,
@@ -312,16 +403,23 @@ mcp.add_tool(
 )
 mcp.add_tool(
     search.resolve_username,
-    annotations=ToolAnnotations(title="Resolve Username", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Resolve Username", openWorldHint=True, readOnlyHint=True
+    ),
 )
 
 # Misc Tools
 mcp.add_tool(
-    misc.get_me, annotations=ToolAnnotations(title="Get Me", openWorldHint=True, readOnlyHint=True)
+    misc.get_me,
+    annotations=ToolAnnotations(
+        title="Get Me", openWorldHint=True, readOnlyHint=True
+    ),
 )
 mcp.add_tool(
     misc.get_participants,
-    annotations=ToolAnnotations(title="Get Participants", openWorldHint=True, readOnlyHint=True),
+    annotations=ToolAnnotations(
+        title="Get Participants", openWorldHint=True, readOnlyHint=True
+    ),
 )
 
 
@@ -337,19 +435,25 @@ async def _main() -> None:
         await learning_service.start_listening()
 
         logger.info("Starting Conversation Service...")
-        client.add_event_handler(conversation_service.handle_incoming_message, events.NewMessage)
+        client.add_event_handler(
+            conversation_service.handle_incoming_message, events.NewMessage
+        )
 
         # Scheduler for reports
         scheduler = AsyncIOScheduler()
         # Run reporting service every day at 8:00 AM UTC
-        scheduler.add_job(reporting_service.generate_daily_report, "cron", hour=8, minute=0)
+        scheduler.add_job(
+            reporting_service.generate_daily_report, "cron", hour=8, minute=0
+        )
         scheduler.start()
 
         logger.info("Telegram client started. Running MCP server...")
         await mcp.run_stdio_async()
     except Exception as e:
         logger.error(f"Error starting client: {e}")
-        if isinstance(e, sqlite3.OperationalError) and "database is locked" in str(e):
+        if isinstance(
+            e, sqlite3.OperationalError
+        ) and "database is locked" in str(e):
             logger.error("Database lock detected.")
         sys.exit(1)
 

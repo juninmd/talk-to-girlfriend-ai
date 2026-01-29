@@ -33,14 +33,18 @@ async def get_gif_search(query: str, limit: int = 10) -> str:
     try:
         try:
             result = await client(
-                functions.messages.SearchGifsRequest(q=query, offset_id=0, limit=limit)
+                functions.messages.SearchGifsRequest(
+                    q=query, offset_id=0, limit=limit
+                )
             )
             if not result.gifs:
                 return "[]"
             return json.dumps(
-                [g.document.id for g in result.gifs], indent=2, default=json_serializer
+                [g.document.id for g in result.gifs],
+                indent=2,
+                default=json_serializer,
             )
-        except:
+        except Exception:
             result = await client(
                 functions.messages.SearchRequest(
                     peer="gif",
@@ -56,11 +60,19 @@ async def get_gif_search(query: str, limit: int = 10) -> str:
                     hash=0,
                 )
             )
-            if not result or not hasattr(result, "messages") or not result.messages:
+            if (
+                not result
+                or not hasattr(result, "messages")
+                or not result.messages
+            ):
                 return "[]"
             gif_ids = []
             for msg in result.messages:
-                if hasattr(msg, "media") and msg.media and hasattr(msg.media, "document"):
+                if (
+                    hasattr(msg, "media")
+                    and msg.media
+                    and hasattr(msg.media, "document")
+                ):
                     gif_ids.append(msg.media.document.id)
             return json.dumps(gif_ids, default=json_serializer)
     except Exception as e:
@@ -76,4 +88,6 @@ async def send_gif(chat_id: Union[int, str], gif_id: int) -> str:
         await client.send_file(entity, gif_id)
         return f"GIF sent to chat {chat_id}."
     except Exception as e:
-        return log_and_format_error("send_gif", e, chat_id=chat_id, gif_id=gif_id)
+        return log_and_format_error(
+            "send_gif", e, chat_id=chat_id, gif_id=gif_id
+        )

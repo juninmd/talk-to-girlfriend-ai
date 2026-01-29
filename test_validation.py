@@ -1,13 +1,12 @@
 import pytest
 import os
-from unittest.mock import MagicMock
 
 # Mock environment variables BEFORE importing anything that might use them
 os.environ["TELEGRAM_API_ID"] = "12345"
 os.environ["TELEGRAM_API_HASH"] = "dummy_hash"
 
 # Import from backend.utils where validate_id is defined
-from backend.utils import validate_id, log_and_format_error
+from backend.utils import validate_id  # noqa: E402
 
 # Define ValidationError if it's expected to be importable or handle exceptions
 # Since validate_id likely returns error strings or raises exceptions, we need to check implementation.

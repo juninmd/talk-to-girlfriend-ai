@@ -13,10 +13,14 @@ async def get_bot_info(bot_username: str) -> str:
             return f"Bot {bot_username} not found."
         result = await client(functions.users.GetFullUserRequest(id=entity))
         if hasattr(result, "to_dict"):
-            return json.dumps(result.to_dict(), indent=2, default=json_serializer)
+            return json.dumps(
+                result.to_dict(), indent=2, default=json_serializer
+            )
         return f"Bot ID: {entity.id}, Name: {entity.first_name}"
     except Exception as e:
-        return log_and_format_error("get_bot_info", e, bot_username=bot_username)
+        return log_and_format_error(
+            "get_bot_info", e, bot_username=bot_username
+        )
 
 
 async def set_bot_commands(bot_username: str, commands: list) -> str:
@@ -25,13 +29,18 @@ async def set_bot_commands(bot_username: str, commands: list) -> str:
         if not getattr(me, "bot", False):
             return "Error: This function is for bot accounts only."
         bot_commands = [
-            BotCommand(command=c["command"], description=c["description"]) for c in commands
+            BotCommand(command=c["command"], description=c["description"])
+            for c in commands
         ]
         await client(
             SetBotCommandsRequest(
-                scope=BotCommandScopeDefault(), lang_code="en", commands=bot_commands
+                scope=BotCommandScopeDefault(),
+                lang_code="en",
+                commands=bot_commands,
             )
         )
         return f"Bot commands set for {bot_username}."
     except Exception as e:
-        return log_and_format_error("set_bot_commands", e, bot_username=bot_username)
+        return log_and_format_error(
+            "set_bot_commands", e, bot_username=bot_username
+        )

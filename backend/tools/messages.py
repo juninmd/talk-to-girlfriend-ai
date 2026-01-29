@@ -1,17 +1,20 @@
 from typing import Union, Optional
 from datetime import datetime, timedelta
-import asyncio
 from telethon import utils
 from backend.client import client
 from backend.utils import log_and_format_error, validate_id, get_sender_name
 
 
 @validate_id("chat_id")
-async def get_messages(chat_id: Union[int, str], page: int = 1, page_size: int = 20) -> str:
+async def get_messages(
+    chat_id: Union[int, str], page: int = 1, page_size: int = 20
+) -> str:
     try:
         entity = await client.get_entity(chat_id)
         offset = (page - 1) * page_size
-        messages = await client.get_messages(entity, limit=page_size, add_offset=offset)
+        messages = await client.get_messages(
+            entity, limit=page_size, add_offset=offset
+        )
         if not messages:
             return "No messages found for this page."
         lines = []
@@ -70,7 +73,9 @@ async def list_messages(
 
 
 @validate_id("chat_id")
-async def reply_to_message(chat_id: Union[int, str], message_id: int, text: str) -> str:
+async def reply_to_message(
+    chat_id: Union[int, str], message_id: int, text: str
+) -> str:
     try:
         entity = await client.get_entity(chat_id)
         await client.send_message(entity, text, reply_to=message_id)

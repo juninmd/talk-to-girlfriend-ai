@@ -16,27 +16,49 @@ class LearningService:
     def __init__(self):
         self.client = client
 
+    def _get_last_synced_id(self, chat_id: int) -> int:
+        """Helper to get the last synced message ID."""
+        with Session(engine) as session:
+            statement = select(func.max(Message.telegram_message_id)).where(
+                Message.chat_id == chat_id
+            )
+            result = session.exec(statement).first()
+            if result:
+                logger.info(
+                    f"Found existing history for chat {chat_id}. Resuming from ID {result}."
+                )
+                return result
+        return 0
+
+    def _extract_sender_name(self, msg) -> str:
+        """Helper to extract sender name from message."""
+        sender_name = "Unknown"
+        if msg.sender:
+            if hasattr(msg.sender, "first_name"):
+                sender_name = f"{msg.sender.first_name} {msg.sender.last_name or ''}".strip()
+            elif hasattr(msg.sender, "title"):
+                sender_name = msg.sender.title
+
+        if not sender_name or sender_name == "Unknown":
+            sender_name = str(msg.sender_id)
+        return sender_name
+
     async def ingest_history(self, chat_id: int, limit: int = 100):
         """Fetches past messages and saves them to DB. Learns from recent ones."""
-        logger.info(f"Starting history ingestion for chat {chat_id}, limit={limit}...")
+        logger.info(
+            f"Starting history ingestion for chat {chat_id}, limit={limit}..."
+        )
         try:
             # Determine the last synced message ID to avoid duplicates
-            min_id = 0
-            with Session(engine) as session:
-                statement = select(func.max(Message.telegram_message_id)).where(Message.chat_id == chat_id)
-                result = session.exec(statement).first()
-                if result:
-                    min_id = result
-                    logger.info(f"Found existing history for chat {chat_id}. Resuming from ID {min_id}.")
+            min_id = self._get_last_synced_id(chat_id)
 
             # We need to resolve the entity first
             entity = await self.client.get_entity(chat_id)
 
             # Fetch messages strictly newer than min_id
-            # Note: Telethon get_messages with min_id fetches messages with ID > min_id
-            messages = await self.client.get_messages(entity, limit=limit, min_id=min_id)
-
-            # Convert to list to iterate
+            messages = await self.client.get_messages(
+                entity, limit=limit, min_id=min_id
+            )
             messages_list = list(messages)
             count = 0
 
@@ -45,17 +67,7 @@ class LearningService:
                 if not msg.message:
                     continue
 
-                sender_name = "Unknown"
-                if msg.sender:
-                    if hasattr(msg.sender, "first_name"):
-                        sender_name = (
-                            f"{msg.sender.first_name} {msg.sender.last_name or ''}".strip()
-                        )
-                    elif hasattr(msg.sender, "title"):
-                        sender_name = msg.sender.title
-
-                if not sender_name:
-                    sender_name = str(msg.sender_id)
+                sender_name = self._extract_sender_name(msg)
 
                 msg_data = {
                     "telegram_message_id": msg.id,
@@ -67,44 +79,56 @@ class LearningService:
                     "is_outgoing": msg.out,
                 }
 
-                db_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
+                db_id = await asyncio.to_thread(
+                    self._save_message_to_db, msg_data
+                )
                 if db_id:
                     count += 1
 
             # Trigger learning on extracted messages
-            # Filter relevant messages (incoming, text only, substantial length)
-            relevant_msgs = [
-                m for m in messages_list
-                if not m.out and m.message and len(m.message) > 5
-            ]
+            await self._process_learning_batch(messages_list, chat_id)
 
-            # Analyze in batches to avoid overwhelming the API
-            batch_size = LEARNING_BATCH_SIZE
-            total_batches = (len(relevant_msgs) + batch_size - 1) // batch_size
-
-            for i in range(0, len(relevant_msgs), batch_size):
-                batch_num = (i // batch_size) + 1
-                logger.info(f"Processing learning batch {batch_num}/{total_batches} for chat {chat_id}...")
-
-                batch = relevant_msgs[i : i + batch_size]
-                tasks = []
-                for m in batch:
-                    tasks.append(self._analyze_and_extract_safe(m.message, m.id, chat_id))
-
-                # Run batch and wait a bit
-                await asyncio.gather(*tasks)
-                await asyncio.sleep(LEARNING_DELAY)  # Rate limit protection
-
-            logger.info(f"Ingested {count} messages for chat {chat_id}. Analyzed {len(relevant_msgs)} for facts.")
+            logger.info(
+                f"Ingested {count} msgs for chat {chat_id}. Analyzed {len(messages_list)}."
+            )
             return count
         except Exception as e:
             logger.error(f"Error ingesting history: {e}")
             return 0
 
+    async def _process_learning_batch(self, messages_list, chat_id):
+        """Helper to process message learning in batches."""
+        relevant_msgs = [
+            m
+            for m in messages_list
+            if not m.out and m.message and len(m.message) > 5
+        ]
+
+        batch_size = LEARNING_BATCH_SIZE
+        total_batches = (len(relevant_msgs) + batch_size - 1) // batch_size
+
+        for i in range(0, len(relevant_msgs), batch_size):
+            batch_num = (i // batch_size) + 1
+            logger.info(
+                f"Processing learning batch {batch_num}/{total_batches} for chat {chat_id}..."
+            )
+
+            batch = relevant_msgs[i : i + batch_size]
+            tasks = []
+            for m in batch:
+                tasks.append(
+                    self._analyze_and_extract_safe(m.message, m.id, chat_id)
+                )
+
+            await asyncio.gather(*tasks)
+            await asyncio.sleep(LEARNING_DELAY)
+
     async def start_listening(self):
         """Registers event handlers for incoming messages."""
         logger.info("Starting LearningService event listener...")
-        self.client.add_event_handler(self.handle_message_learning, events.NewMessage)
+        self.client.add_event_handler(
+            self.handle_message_learning, events.NewMessage
+        )
 
     async def _save_message_to_db(self, msg_data):
         """Runs synchronous DB save in a thread."""
@@ -113,7 +137,8 @@ class LearningService:
                 # Check for duplicate
                 existing = session.exec(
                     select(Message).where(
-                        Message.telegram_message_id == msg_data["telegram_message_id"],
+                        Message.telegram_message_id
+                        == msg_data["telegram_message_id"],
                         Message.chat_id == msg_data["chat_id"],
                     )
                 ).first()
@@ -162,9 +187,7 @@ class LearningService:
             sender_name = "Unknown"
             if event.sender:
                 if isinstance(event.sender, User):
-                    sender_name = (
-                        f"{event.sender.first_name} {event.sender.last_name or ''}".strip()
-                    )
+                    sender_name = f"{event.sender.first_name} {event.sender.last_name or ''}".strip()
                 elif hasattr(event.sender, "title"):
                     sender_name = event.sender.title
 
@@ -183,32 +206,46 @@ class LearningService:
             }
 
             # 1. Save to Database (Non-blocking)
-            db_message_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
+            db_message_id = await asyncio.to_thread(
+                self._save_message_to_db, msg_data
+            )
 
             # 2. Asynchronously extract facts (Learning)
             # Only learn from non-trivial messages
             if text and len(text) > 10 and db_message_id:
-                asyncio.create_task(self._analyze_and_extract(text, db_message_id, chat_id))
+                asyncio.create_task(
+                    self._analyze_and_extract(text, db_message_id, chat_id)
+                )
 
         except Exception as e:
             logger.error(f"Error in handle_message_learning: {e}")
 
-    async def _analyze_and_extract(self, text: str, source_msg_id: int, chat_id: int):
+    async def _analyze_and_extract(
+        self, text: str, source_msg_id: int, chat_id: int
+    ):
         """Extracts facts using AI service and saves them."""
         try:
             facts = await ai_service.extract_facts(text)
             if facts:
-                await asyncio.to_thread(self._save_facts_to_db, facts, source_msg_id, chat_id)
-                logger.info(f"Learned {len(facts)} new facts from message {source_msg_id}")
+                await asyncio.to_thread(
+                    self._save_facts_to_db, facts, source_msg_id, chat_id
+                )
+                logger.info(
+                    f"Learned {len(facts)} new facts from message {source_msg_id}"
+                )
         except Exception as e:
             logger.error(f"Error in fact extraction: {e}")
 
-    async def _analyze_and_extract_safe(self, text: str, source_msg_id: int, chat_id: int):
+    async def _analyze_and_extract_safe(
+        self, text: str, source_msg_id: int, chat_id: int
+    ):
         """Wrapper for extraction that catches all exceptions to prevent batch failure."""
         try:
             await self._analyze_and_extract(text, source_msg_id, chat_id)
         except Exception as e:
-            logger.error(f"Failed to process message {source_msg_id} for learning: {e}")
+            logger.error(
+                f"Failed to process message {source_msg_id} for learning: {e}"
+            )
 
 
 learning_service = LearningService()

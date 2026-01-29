@@ -7,8 +7,8 @@ os.environ["TELEGRAM_API_ID"] = "123"
 os.environ["TELEGRAM_API_HASH"] = "abc"
 os.environ["GOOGLE_API_KEY"] = "xyz"
 
-from backend.services.ai import AIService
-from backend.services.learning import LearningService
+from backend.services.ai import AIService  # noqa: E402
+from backend.services.learning import LearningService  # noqa: E402
 
 
 @pytest.mark.asyncio
@@ -62,7 +62,9 @@ async def test_ingest_history_flow():
             # Mock DB save (it's run in thread, so we patch asyncio.to_thread or the method itself if possible)
             # But ingest_history calls asyncio.to_thread(self._save_message_to_db, ...)
 
-            with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
+            with patch(
+                "asyncio.to_thread", new_callable=AsyncMock
+            ) as mock_to_thread:
                 mock_to_thread.return_value = 1  # DB ID
 
                 # Also mock _analyze_and_extract_safe (it's a method on service)
@@ -74,9 +76,13 @@ async def test_ingest_history_flow():
                     pass
 
                 # Patching the method on the instance
-                service._analyze_and_extract_safe = MagicMock(side_effect=dummy_analyze)
+                service._analyze_and_extract_safe = MagicMock(
+                    side_effect=dummy_analyze
+                )
 
                 count = await service.ingest_history(123, limit=5)
 
                 assert count == 1
-                mock_client.get_messages.assert_called_with("dummy_entity", limit=5, min_id=0)
+                mock_client.get_messages.assert_called_with(
+                    "dummy_entity", limit=5, min_id=0
+                )

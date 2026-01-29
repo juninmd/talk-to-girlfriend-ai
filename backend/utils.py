@@ -51,16 +51,55 @@ def log_and_format_error(
                 if category.name.lower() in function_name.lower():
                     prefix = category
                     break
-        prefix_str = prefix.value if isinstance(prefix, ErrorCategory) else (prefix or "GEN")
+        prefix_str = (
+            prefix.value
+            if isinstance(prefix, ErrorCategory)
+            else (prefix or "GEN")
+        )
         error_code = f"{prefix_str}-ERR-{abs(hash(function_name)) % 1000:03d}"
 
     context = ", ".join(f"{k}={v}" for k, v in kwargs.items())
-    logger.error(f"Error in {function_name} ({context}) - Code: {error_code}", exc_info=True)
+    logger.error(
+        f"Error in {function_name} ({context}) - Code: {error_code}",
+        exc_info=True,
+    )
 
     if user_message:
         return user_message
 
     return f"An error occurred (code: {error_code}). Check mcp_errors.log for details."
+
+
+def _validate_single_id(value, p_name):
+    """Helper to validate a single ID value."""
+    if isinstance(value, int):
+        if not (-(2**63) <= value <= 2**63 - 1):
+            return (
+                None,
+                f"Invalid {p_name}: {value}. ID is out of the valid integer range.",
+            )
+        return value, None
+    if isinstance(value, str):
+        try:
+            int_value = int(value)
+            if not (-(2**63) <= int_value <= 2**63 - 1):
+                return (
+                    None,
+                    f"Invalid {p_name}: {value}. ID is out of the valid integer range.",
+                )
+            return int_value, None
+        except ValueError:
+            if re.match(r"^@?[a-zA-Z0-9_]{5,}$", value):
+                return value, None
+            else:
+                return (
+                    None,
+                    f"Invalid {p_name}: '{value}'. Must be a valid integer ID, or a username string.",
+                )
+    return (
+        None,
+        f"Invalid {p_name}: {value}. Type must be an integer or a string.",
+    )
 
 
 def validate_id(*param_names_to_validate):
@@ -77,40 +116,12 @@ def validate_id(*param_names_to_validate):
 
                 param_value = kwargs[param_name]
 
-                def validate_single_id(value, p_name):
-                    if isinstance(value, int):
-                        if not (-(2**63) <= value <= 2**63 - 1):
-                            return (
-                                None,
-                                f"Invalid {p_name}: {value}. ID is out of the valid integer range.",
-                            )
-                        return value, None
-                    if isinstance(value, str):
-                        try:
-                            int_value = int(value)
-                            if not (-(2**63) <= int_value <= 2**63 - 1):
-                                return (
-                                    None,
-                                    f"Invalid {p_name}: {value}. ID is out of the valid integer range.",
-                                )
-                            return int_value, None
-                        except ValueError:
-                            if re.match(r"^@?[a-zA-Z0-9_]{5,}$", value):
-                                return value, None
-                            else:
-                                return (
-                                    None,
-                                    f"Invalid {p_name}: '{value}'. Must be a valid integer ID, or a username string.",
-                                )
-                    return (
-                        None,
-                        f"Invalid {p_name}: {value}. Type must be an integer or a string.",
-                    )
-
                 if isinstance(param_value, list):
                     validated_list = []
                     for item in param_value:
-                        validated_item, error_msg = validate_single_id(item, param_name)
+                        validated_item, error_msg = _validate_single_id(
+                            item, param_name
+                        )
                         if error_msg:
                             return log_and_format_error(
                                 func.__name__,
@@ -122,7 +133,9 @@ def validate_id(*param_names_to_validate):
                         validated_list.append(validated_item)
                     kwargs[param_name] = validated_list
                 else:
-                    validated_value, error_msg = validate_single_id(param_value, param_name)
+                    validated_value, error_msg = _validate_single_id(
+                        param_value, param_name
+                    )
                     if error_msg:
                         return log_and_format_error(
                             func.__name__,
@@ -180,6 +193,7 @@ def async_retry(max_attempts: int = 3, delay: float = 1.0):
     """
     Decorator to retry async functions with exponential backoff.
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -191,7 +205,10 @@ def async_retry(max_attempts: int = 3, delay: float = 1.0):
                 except Exception as e:
                     attempts += 1
                     if attempts >= max_attempts:
-                        logger.error(f"Function {func.__name__} failed after {max_attempts} attempts. Error: {e}")
+                        logger.error(
+                            f"Function {func.__name__} failed after {max_attempts} attempts. "
+                            f"Error: {e}"
+                        )
                         raise e
 
                     logger.warning(
@@ -200,5 +217,7 @@ def async_retry(max_attempts: int = 3, delay: float = 1.0):
                     )
                     await asyncio.sleep(current_delay)
                     current_delay *= 2  # Exponential backoff
+
         return wrapper
+
     return decorator

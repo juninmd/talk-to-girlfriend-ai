@@ -6,7 +6,9 @@ from backend.utils import log_and_format_error, validate_id
 
 
 @validate_id("chat_id")
-async def send_file(chat_id: Union[int, str], file_path: str, caption: str = None) -> str:
+async def send_file(
+    chat_id: Union[int, str], file_path: str, caption: str = None
+) -> str:
     try:
         if not os.path.isfile(file_path):
             return f"File not found: {file_path}"
@@ -16,11 +18,15 @@ async def send_file(chat_id: Union[int, str], file_path: str, caption: str = Non
         await client.send_file(entity, file_path, caption=caption)
         return f"File sent to chat {chat_id}."
     except Exception as e:
-        return log_and_format_error("send_file", e, chat_id=chat_id, file_path=file_path)
+        return log_and_format_error(
+            "send_file", e, chat_id=chat_id, file_path=file_path
+        )
 
 
 @validate_id("chat_id")
-async def download_media(chat_id: Union[int, str], message_id: int, file_path: str) -> str:
+async def download_media(
+    chat_id: Union[int, str], message_id: int, file_path: str
+) -> str:
     try:
         entity = await client.get_entity(chat_id)
         msg = await client.get_messages(entity, ids=message_id)
@@ -31,7 +37,7 @@ async def download_media(chat_id: Union[int, str], message_id: int, file_path: s
             return f"Directory not writable: {dir_path}"
         await client.download_media(msg, file=file_path)
         if not os.path.isfile(file_path):
-            return f"Download failed."
+            return "Download failed."
         return f"Media downloaded to {file_path}."
     except Exception as e:
         return log_and_format_error("download_media", e, chat_id=chat_id)
@@ -41,7 +47,7 @@ async def download_media(chat_id: Union[int, str], message_id: int, file_path: s
 async def send_voice(chat_id: Union[int, str], file_path: str) -> str:
     try:
         if not os.path.isfile(file_path):
-            return f"File not found."
+            return "File not found."
         mime, _ = guess_type(file_path)
         if not (
             mime
@@ -54,6 +60,6 @@ async def send_voice(chat_id: Union[int, str], file_path: str) -> str:
             return "Voice file must be .ogg or .opus format."
         entity = await client.get_entity(chat_id)
         await client.send_file(entity, file_path, voice_note=True)
-        return f"Voice message sent."
+        return "Voice message sent."
     except Exception as e:
         return log_and_format_error("send_voice", e, chat_id=chat_id)

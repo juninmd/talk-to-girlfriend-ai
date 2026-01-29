@@ -28,7 +28,9 @@ async def list_contacts() -> str:
 
 async def search_contacts(query: str) -> str:
     try:
-        result = await client(functions.contacts.SearchRequest(q=query, limit=50))
+        result = await client(
+            functions.contacts.SearchRequest(q=query, limit=50)
+        )
         users = result.users
         if not users:
             return f"No contacts found matching '{query}'."
@@ -53,7 +55,10 @@ async def add_contact(phone: str, first_name: str, last_name: str = "") -> str:
             functions.contacts.ImportContactsRequest(
                 contacts=[
                     InputPhoneContact(
-                        client_id=0, phone=phone, first_name=first_name, last_name=last_name
+                        client_id=0,
+                        phone=phone,
+                        first_name=first_name,
+                        last_name=last_name,
                     )
                 ]
             )

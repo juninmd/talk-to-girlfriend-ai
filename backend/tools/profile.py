@@ -3,7 +3,9 @@ from backend.client import client
 from backend.utils import log_and_format_error
 
 
-async def update_profile(first_name: str = None, last_name: str = None, about: str = None) -> str:
+async def update_profile(
+    first_name: str = None, last_name: str = None, about: str = None
+) -> str:
     try:
         await client(
             functions.account.UpdateProfileRequest(
@@ -18,7 +20,9 @@ async def update_profile(first_name: str = None, last_name: str = None, about: s
 async def set_profile_photo(file_path: str) -> str:
     try:
         await client(
-            functions.photos.UploadProfilePhotoRequest(file=await client.upload_file(file_path))
+            functions.photos.UploadProfilePhotoRequest(
+                file=await client.upload_file(file_path)
+            )
         )
         return "Profile photo updated."
     except Exception as e:

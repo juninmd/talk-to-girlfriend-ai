@@ -1,11 +1,18 @@
 from typing import Union, Optional
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form, Depends
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Query,
+    UploadFile,
+    File,
+    Form,
+    Depends,
+)
 from backend.api.models import (
     SendMessageRequest,
     ScheduleMessageRequest,
     ReactionRequest,
     EditMessageRequest,
-    SendFileRequest,
 )
 from backend.services.telegram import TelegramService
 
@@ -16,7 +23,10 @@ router = APIRouter()
 async def health_check():
     from backend.client import client
 
-    return {"status": "ok", "connected": client.is_connected() if client else False}
+    return {
+        "status": "ok",
+        "connected": client.is_connected() if client else False,
+    }
 
 
 @router.get("/me")
@@ -52,7 +62,9 @@ async def get_chat(chat_id: Union[int, str]):
 async def get_messages(
     chat_id: Union[int, str],
     limit: int = Query(default=20, le=100),
-    offset_id: Optional[int] = Query(default=None, description="Get messages before this ID"),
+    offset_id: Optional[int] = Query(
+        default=None, description="Get messages before this ID"
+    ),
 ):
     try:
         return await TelegramService.get_messages(chat_id, limit, offset_id)
@@ -69,7 +81,9 @@ async def send_message(chat_id: Union[int, str], request: SendMessageRequest):
 
 
 @router.post("/chats/{chat_id}/schedule")
-async def schedule_message(chat_id: Union[int, str], request: ScheduleMessageRequest):
+async def schedule_message(
+    chat_id: Union[int, str], request: ScheduleMessageRequest
+):
     try:
         return await TelegramService.schedule_message(chat_id, request)
     except HTTPException:
@@ -111,7 +125,9 @@ async def search_contacts(query: str = Query(..., min_length=1)):
 
 
 @router.get("/chats/{chat_id}/history")
-async def get_history(chat_id: Union[int, str], limit: int = Query(default=100, le=500)):
+async def get_history(
+    chat_id: Union[int, str], limit: int = Query(default=100, le=500)
+):
     try:
         return await TelegramService.get_messages(chat_id, limit)
     except Exception as e:
@@ -119,15 +135,21 @@ async def get_history(chat_id: Union[int, str], limit: int = Query(default=100, 
 
 
 @router.post("/chats/{chat_id}/messages/{message_id}/reaction")
-async def send_reaction(chat_id: Union[int, str], message_id: int, request: ReactionRequest):
+async def send_reaction(
+    chat_id: Union[int, str], message_id: int, request: ReactionRequest
+):
     try:
-        return await TelegramService.send_reaction(chat_id, message_id, request)
+        return await TelegramService.send_reaction(
+            chat_id, message_id, request
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/chats/{chat_id}/messages/{message_id}/reply")
-async def reply_to_message(chat_id: Union[int, str], message_id: int, request: SendMessageRequest):
+async def reply_to_message(
+    chat_id: Union[int, str], message_id: int, request: SendMessageRequest
+):
     try:
         request.reply_to = message_id
         return await TelegramService.send_message(chat_id, request)
@@ -136,7 +158,9 @@ async def reply_to_message(chat_id: Union[int, str], message_id: int, request: S
 
 
 @router.put("/chats/{chat_id}/messages/{message_id}")
-async def edit_message(chat_id: Union[int, str], message_id: int, request: EditMessageRequest):
+async def edit_message(
+    chat_id: Union[int, str], message_id: int, request: EditMessageRequest
+):
     try:
         return await TelegramService.edit_message(chat_id, message_id, request)
     except Exception as e:
@@ -153,10 +177,14 @@ async def delete_message(chat_id: Union[int, str], message_id: int):
 
 @router.post("/chats/{chat_id}/messages/{message_id}/forward")
 async def forward_message(
-    chat_id: Union[int, str], message_id: int, to_chat_id: Union[int, str] = Query(...)
+    chat_id: Union[int, str],
+    message_id: int,
+    to_chat_id: Union[int, str] = Query(...),
 ):
     try:
-        return await TelegramService.forward_message(chat_id, message_id, to_chat_id)
+        return await TelegramService.forward_message(
+            chat_id, message_id, to_chat_id
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -179,7 +207,9 @@ async def pin_message(chat_id: Union[int, str], message_id: int):
 
 @router.get("/chats/{chat_id}/search")
 async def search_messages(
-    chat_id: Union[int, str], query: str = Query(...), limit: int = Query(default=20, le=100)
+    chat_id: Union[int, str],
+    query: str = Query(...),
+    limit: int = Query(default=20, le=100),
 ):
     try:
         return await TelegramService.search_messages(chat_id, query, limit)
@@ -196,7 +226,9 @@ async def get_user_status(user_id: Union[int, str]):
 
 
 @router.get("/users/{user_id}/photos")
-async def get_user_photos(user_id: Union[int, str], limit: int = Query(default=10, le=50)):
+async def get_user_photos(
+    user_id: Union[int, str], limit: int = Query(default=10, le=50)
+):
     try:
         return await TelegramService.get_user_photos(user_id, limit)
     except Exception as e:
@@ -204,7 +236,9 @@ async def get_user_photos(user_id: Union[int, str], limit: int = Query(default=1
 
 
 @router.get("/gifs/search")
-async def search_gifs(query: str = Query(...), limit: int = Query(default=10, le=50)):
+async def search_gifs(
+    query: str = Query(...), limit: int = Query(default=10, le=50)
+):
     try:
         return await TelegramService.search_gifs(query, limit)
     except Exception as e:

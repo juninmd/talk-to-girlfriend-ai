@@ -5,33 +5,45 @@ from unittest.mock import MagicMock, AsyncMock, patch
 with patch("mcp.server.fastmcp.FastMCP"):
     from backend import server
 
+
 @pytest.fixture
 def mock_mcp():
     with patch("backend.server.mcp") as mock:
         yield mock
+
 
 @pytest.fixture
 def mock_client():
     with patch("backend.server.client") as mock:
         yield mock
 
+
 @pytest.fixture
 def mock_learning_service():
     with patch("backend.server.learning_service") as mock:
         yield mock
+
 
 @pytest.fixture
 def mock_reporting_service():
     with patch("backend.server.reporting_service") as mock:
         yield mock
 
+
 @pytest.fixture
 def mock_scheduler():
     with patch("backend.server.AsyncIOScheduler") as mock:
         yield mock
 
+
 @pytest.mark.asyncio
-async def test_main_function(mock_client, mock_learning_service, mock_reporting_service, mock_scheduler, mock_mcp):
+async def test_main_function(
+    mock_client,
+    mock_learning_service,
+    mock_reporting_service,
+    mock_scheduler,
+    mock_mcp,
+):
     with patch("backend.server.create_db_and_tables") as mock_db:
         # Mocking _main execution by running it manually or mocking asyncio.run
         # Since main() calls asyncio.run(_main()), we can just call _main directly if we can access it.
@@ -51,6 +63,7 @@ async def test_main_function(mock_client, mock_learning_service, mock_reporting_
         mock_scheduler.return_value.start.assert_called_once()
         mock_scheduler.return_value.add_job.assert_called()
 
+
 @pytest.mark.asyncio
 async def test_main_entry_point():
     # Test main() wrapper
@@ -59,6 +72,7 @@ async def test_main_entry_point():
             server.main()
             mock_nest.assert_called_once()
             mock_run.assert_called_once()
+
 
 @pytest.mark.asyncio
 async def test_main_exception(mock_client):

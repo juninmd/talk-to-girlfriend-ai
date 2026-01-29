@@ -22,7 +22,10 @@ async def save_draft(
 
         await client(
             functions.messages.SaveDraftRequest(
-                peer=peer, message=message, no_webpage=no_webpage, reply_to=reply_to
+                peer=peer,
+                message=message,
+                no_webpage=no_webpage,
+                reply_to=reply_to,
             )
         )
         return f"Draft saved to chat {chat_id}."
@@ -64,7 +67,9 @@ async def get_drafts() -> str:
         if not drafts_info:
             return "No drafts found."
         return json.dumps(
-            {"drafts": drafts_info, "count": len(drafts_info)}, indent=2, default=json_serializer
+            {"drafts": drafts_info, "count": len(drafts_info)},
+            indent=2,
+            default=json_serializer,
         )
     except Exception as e:
         return log_and_format_error("get_drafts", e)
@@ -74,7 +79,9 @@ async def get_drafts() -> str:
 async def clear_draft(chat_id: Union[int, str]) -> str:
     try:
         peer = await client.get_input_entity(chat_id)
-        await client(functions.messages.SaveDraftRequest(peer=peer, message=""))
+        await client(
+            functions.messages.SaveDraftRequest(peer=peer, message="")
+        )
         return f"Draft cleared from chat {chat_id}."
     except Exception as e:
         return log_and_format_error("clear_draft", e, chat_id=chat_id)

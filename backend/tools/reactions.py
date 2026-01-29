@@ -14,7 +14,10 @@ async def send_reaction(
         peer = await client.get_input_entity(chat_id)
         await client(
             functions.messages.SendReactionRequest(
-                peer=peer, msg_id=message_id, big=big, reaction=[ReactionEmoji(emoticon=emoji)]
+                peer=peer,
+                msg_id=message_id,
+                big=big,
+                reaction=[ReactionEmoji(emoticon=emoji)],
             )
         )
         return f"Reaction '{emoji}' sent to message {message_id} in chat {chat_id}."
@@ -27,7 +30,9 @@ async def remove_reaction(chat_id: Union[int, str], message_id: int) -> str:
     try:
         peer = await client.get_input_entity(chat_id)
         await client(
-            functions.messages.SendReactionRequest(peer=peer, msg_id=message_id, reaction=[])
+            functions.messages.SendReactionRequest(
+                peer=peer, msg_id=message_id, reaction=[]
+            )
         )
         return f"Reaction removed from message {message_id}."
     except Exception as e:
@@ -35,7 +40,9 @@ async def remove_reaction(chat_id: Union[int, str], message_id: int) -> str:
 
 
 @validate_id("chat_id")
-async def get_message_reactions(chat_id: Union[int, str], message_id: int, limit: int = 50) -> str:
+async def get_message_reactions(
+    chat_id: Union[int, str], message_id: int, limit: int = 50
+) -> str:
     try:
         peer = await client.get_input_entity(chat_id)
         result = await client(
@@ -48,7 +55,9 @@ async def get_message_reactions(chat_id: Union[int, str], message_id: int, limit
 
         data = []
         for r in result.reactions:
-            user_id = r.peer_id.user_id if hasattr(r.peer_id, "user_id") else None
+            user_id = (
+                r.peer_id.user_id if hasattr(r.peer_id, "user_id") else None
+            )
             emoji = (
                 r.reaction.emoticon
                 if isinstance(r.reaction, ReactionEmoji)
@@ -62,6 +71,10 @@ async def get_message_reactions(chat_id: Union[int, str], message_id: int, limit
                 }
             )
 
-        return json.dumps({"reactions": data}, indent=2, default=json_serializer)
+        return json.dumps(
+            {"reactions": data}, indent=2, default=json_serializer
+        )
     except Exception as e:
-        return log_and_format_error("get_message_reactions", e, chat_id=chat_id)
+        return log_and_format_error(
+            "get_message_reactions", e, chat_id=chat_id
+        )
