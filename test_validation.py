@@ -1,12 +1,10 @@
 import pytest
 import os
+from backend.utils import validate_id
 
 # Mock environment variables BEFORE importing anything that might use them
 os.environ["TELEGRAM_API_ID"] = "12345"
 os.environ["TELEGRAM_API_HASH"] = "dummy_hash"
-
-# Import from backend.utils where validate_id is defined
-from backend.utils import validate_id
 
 
 @validate_id("user_id", "chat_id", "user_ids")

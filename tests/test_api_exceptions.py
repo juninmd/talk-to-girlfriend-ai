@@ -41,9 +41,7 @@ def test_api_exceptions(mock_telegram_service):
     ]
 
     for method in methods:
-        setattr(
-            mock_telegram_service, method, AsyncMock(side_effect=Exception("API Error"))
-        )
+        setattr(mock_telegram_service, method, AsyncMock(side_effect=Exception("API Error")))
 
     # Call all endpoints
     assert client.get("/me").status_code == 500
@@ -52,23 +50,15 @@ def test_api_exceptions(mock_telegram_service):
     assert client.get("/chats/1/messages").status_code == 500
     assert client.post("/chats/1/messages", json={"message": "hi"}).status_code == 500
     assert (
-        client.post(
-            "/chats/1/schedule", json={"message": "hi", "minutes_from_now": 1}
-        ).status_code
+        client.post("/chats/1/schedule", json={"message": "hi", "minutes_from_now": 1}).status_code
         == 500
     )
     assert client.post("/chats/1/files", files={"file": b"c"}).status_code == 500
     assert client.get("/contacts").status_code == 500
     assert client.get("/contacts/search?query=q").status_code == 500
     assert client.get("/chats/1/history").status_code == 500
-    assert (
-        client.post("/chats/1/messages/1/reaction", json={"emoji": "e"}).status_code
-        == 500
-    )
-    assert (
-        client.post("/chats/1/messages/1/reply", json={"message": "r"}).status_code
-        == 500
-    )
+    assert client.post("/chats/1/messages/1/reaction", json={"emoji": "e"}).status_code == 500
+    assert client.post("/chats/1/messages/1/reply", json={"message": "r"}).status_code == 500
     assert client.put("/chats/1/messages/1", json={"new_text": "e"}).status_code == 500
     assert client.delete("/chats/1/messages/1").status_code == 500
     assert client.post("/chats/1/messages/1/forward?to_chat_id=2").status_code == 500

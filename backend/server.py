@@ -9,7 +9,6 @@ from mcp.types import ToolAnnotations
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from backend.client import client
-from backend.utils import log_and_format_error
 from backend.logging_setup import setup_logging
 
 # Import new services
@@ -317,7 +316,8 @@ mcp.add_tool(
 
 # Misc Tools
 mcp.add_tool(
-    misc.get_me, annotations=ToolAnnotations(title="Get Me", openWorldHint=True, readOnlyHint=True)
+    misc.get_me,
+    annotations=ToolAnnotations(title="Get Me", openWorldHint=True, readOnlyHint=True),
 )
 mcp.add_tool(
     misc.get_participants,

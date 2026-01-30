@@ -65,17 +65,13 @@ def test_send_message(mock_telegram_service):
 
 def test_schedule_message(mock_telegram_service):
     mock_telegram_service.schedule_message = AsyncMock(return_value={"id": 1})
-    response = client.post(
-        "/chats/123/schedule", json={"message": "Hi", "minutes_from_now": 10}
-    )
+    response = client.post("/chats/123/schedule", json={"message": "Hi", "minutes_from_now": 10})
     assert response.status_code == 200
 
 
 def test_send_file(mock_telegram_service):
     mock_telegram_service.send_file = AsyncMock(return_value={"id": 1})
-    response = client.post(
-        "/chats/123/files", files={"file": ("test.txt", b"content")}
-    )
+    response = client.post("/chats/123/files", files={"file": ("test.txt", b"content")})
     assert response.status_code == 200
 
 
