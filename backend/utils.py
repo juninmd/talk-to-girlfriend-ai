@@ -51,15 +51,11 @@ def log_and_format_error(
                 if category.name.lower() in function_name.lower():
                     prefix = category
                     break
-        prefix_str = (
-            prefix.value if isinstance(prefix, ErrorCategory) else (prefix or "GEN")
-        )
+        prefix_str = prefix.value if isinstance(prefix, ErrorCategory) else (prefix or "GEN")
         error_code = f"{prefix_str}-ERR-{abs(hash(function_name)) % 1000:03d}"
 
     context = ", ".join(f"{k}={v}" for k, v in kwargs.items())
-    logger.error(
-        f"Error in {function_name} ({context}) - Code: {error_code}", exc_info=True
-    )
+    logger.error(f"Error in {function_name} ({context}) - Code: {error_code}", exc_info=True)
 
     if user_message:
         return user_message
@@ -114,9 +110,7 @@ def validate_id(*param_names_to_validate):
                 if isinstance(param_value, list):
                     validated_list = []
                     for item in param_value:
-                        validated_item, error_msg = validate_single_id(
-                            item, param_name
-                        )
+                        validated_item, error_msg = validate_single_id(item, param_name)
                         if error_msg:
                             return log_and_format_error(
                                 func.__name__,
@@ -128,9 +122,7 @@ def validate_id(*param_names_to_validate):
                         validated_list.append(validated_item)
                     kwargs[param_name] = validated_list
                 else:
-                    validated_value, error_msg = validate_single_id(
-                        param_value, param_name
-                    )
+                    validated_value, error_msg = validate_single_id(param_value, param_name)
                     if error_msg:
                         return log_and_format_error(
                             func.__name__,

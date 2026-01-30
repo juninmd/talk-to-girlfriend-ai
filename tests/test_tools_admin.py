@@ -3,10 +3,12 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.tools import admin
 
+
 @pytest.fixture
 def mock_client():
     with patch("backend.tools.admin.client") as mock:
         yield mock
+
 
 @pytest.mark.asyncio
 async def test_promote_admin(mock_client):
@@ -23,6 +25,7 @@ async def test_promote_admin(mock_client):
     result = await admin.promote_admin(group_id=123, user_id=456)
     assert "Successfully promoted" in result
 
+
 @pytest.mark.asyncio
 async def test_demote_admin(mock_client):
     mock_chat = MagicMock()
@@ -32,6 +35,7 @@ async def test_demote_admin(mock_client):
 
     result = await admin.demote_admin(group_id=123, user_id=456)
     assert "Successfully demoted" in result
+
 
 @pytest.mark.asyncio
 async def test_ban_user(mock_client):
@@ -44,6 +48,7 @@ async def test_ban_user(mock_client):
     result = await admin.ban_user(chat_id=123, user_id=456)
     assert "banned from chat" in result
 
+
 @pytest.mark.asyncio
 async def test_unban_user(mock_client):
     mock_chat = MagicMock()
@@ -53,6 +58,7 @@ async def test_unban_user(mock_client):
 
     result = await admin.unban_user(chat_id=123, user_id=456)
     assert "unbanned" in result
+
 
 @pytest.mark.asyncio
 async def test_get_admins(mock_client):
@@ -65,6 +71,7 @@ async def test_get_admins(mock_client):
     result = await admin.get_admins(chat_id=123)
     assert "Admin" in result
 
+
 @pytest.mark.asyncio
 async def test_get_banned_users(mock_client):
     mock_user = MagicMock()
@@ -76,6 +83,7 @@ async def test_get_banned_users(mock_client):
     result = await admin.get_banned_users(chat_id=123)
     assert "Banned" in result
 
+
 @pytest.mark.asyncio
 async def test_get_recent_actions(mock_client):
     mock_result = MagicMock()
@@ -86,6 +94,7 @@ async def test_get_recent_actions(mock_client):
 
     result = await admin.get_recent_actions(chat_id=123)
     assert "delete" in result
+
 
 @pytest.mark.asyncio
 async def test_get_recent_actions_empty(mock_client):

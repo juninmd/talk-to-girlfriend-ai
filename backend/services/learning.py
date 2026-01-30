@@ -23,11 +23,15 @@ class LearningService:
             # Determine the last synced message ID to avoid duplicates
             min_id = 0
             with Session(engine) as session:
-                statement = select(func.max(Message.telegram_message_id)).where(Message.chat_id == chat_id)
+                statement = select(func.max(Message.telegram_message_id)).where(
+                    Message.chat_id == chat_id
+                )
                 result = session.exec(statement).first()
                 if result:
                     min_id = result
-                    logger.info(f"Found existing history for chat {chat_id}. Resuming from ID {min_id}.")
+                    logger.info(
+                        f"Found existing history for chat {chat_id}. Resuming from ID {min_id}."
+                    )
 
             # We need to resolve the entity first
             entity = await self.client.get_entity(chat_id)
@@ -74,8 +78,7 @@ class LearningService:
             # Trigger learning on extracted messages
             # Filter relevant messages (incoming, text only, substantial length)
             relevant_msgs = [
-                m for m in messages_list
-                if not m.out and m.message and len(m.message) > 5
+                m for m in messages_list if not m.out and m.message and len(m.message) > 5
             ]
 
             # Analyze in batches to avoid overwhelming the API
@@ -84,7 +87,9 @@ class LearningService:
 
             for i in range(0, len(relevant_msgs), batch_size):
                 batch_num = (i // batch_size) + 1
-                logger.info(f"Processing learning batch {batch_num}/{total_batches} for chat {chat_id}...")
+                logger.info(
+                    f"Processing learning batch {batch_num}/{total_batches} for chat {chat_id}..."
+                )
 
                 batch = relevant_msgs[i : i + batch_size]
                 tasks = []
@@ -95,7 +100,9 @@ class LearningService:
                 await asyncio.gather(*tasks)
                 await asyncio.sleep(settings.LEARNING_DELAY)  # Rate limit protection
 
-            logger.info(f"Ingested {count} messages for chat {chat_id}. Analyzed {len(relevant_msgs)} for facts.")
+            logger.info(
+                f"Ingested {count} messages for chat {chat_id}. Analyzed {len(relevant_msgs)} for facts."
+            )
             return count
         except Exception as e:
             logger.error(f"Error ingesting history: {e}")

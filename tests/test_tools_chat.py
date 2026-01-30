@@ -3,10 +3,12 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.tools import chat
 
+
 @pytest.fixture
 def mock_client():
     with patch("backend.tools.chat.client") as mock:
         yield mock
+
 
 @pytest.mark.asyncio
 async def test_get_chats(mock_client):
@@ -17,6 +19,7 @@ async def test_get_chats(mock_client):
 
     result = await chat.get_chats()
     assert "Test Chat" in result
+
 
 @pytest.mark.asyncio
 async def test_list_chats(mock_client):
@@ -43,9 +46,11 @@ async def test_list_chats(mock_client):
     result = await chat.list_chats(chat_type="group")
     assert "No chats found" in result
 
+
 @pytest.mark.asyncio
 async def test_get_chat(mock_client):
     from telethon.tl.types import User
+
     mock_user = MagicMock(spec=User)
     mock_user.id = 123
     mock_user.first_name = "Test"
@@ -59,9 +64,11 @@ async def test_get_chat(mock_client):
     result = await chat.get_chat(chat_id=123)
     assert "Test" in result
 
+
 @pytest.mark.asyncio
 async def test_leave_chat(mock_client):
     from telethon.tl.types import Channel
+
     mock_channel = MagicMock(spec=Channel)
     mock_channel.id = 123
     mock_channel.title = "Channel"
@@ -71,12 +78,13 @@ async def test_leave_chat(mock_client):
     result = await chat.leave_chat(chat_id=123)
     assert "Left channel" in result
 
+
 @pytest.mark.asyncio
 async def test_create_group(mock_client):
     mock_client.get_entity = AsyncMock(return_value="user_obj")
     mock_result = MagicMock()
     mock_result.chats = [MagicMock(id=999)]
-    mock_client.side_effect = AsyncMock(return_value=mock_result) # for call to client()
+    mock_client.side_effect = AsyncMock(return_value=mock_result)  # for call to client()
 
     result = await chat.create_group("New Group", [123])
     assert "Group created" in result

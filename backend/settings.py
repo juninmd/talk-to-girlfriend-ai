@@ -26,9 +26,7 @@ class Settings(BaseSettings):
     LEARNING_DELAY: float = 1.0
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"  # Ignore extra env vars
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"  # Ignore extra env vars
     )
 
 

@@ -3,20 +3,24 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.services.reporting import ReportingService
 
+
 @pytest.fixture
 def mock_session():
     with patch("backend.services.reporting.Session") as mock:
         yield mock
+
 
 @pytest.fixture
 def mock_client():
     with patch("backend.services.reporting.client") as mock:
         yield mock
 
+
 @pytest.fixture
 def mock_ai_service():
     with patch("backend.services.reporting.ai_service") as mock:
         yield mock
+
 
 @pytest.mark.asyncio
 async def test_generate_daily_report_no_messages(mock_session, mock_client):
@@ -30,6 +34,7 @@ async def test_generate_daily_report_no_messages(mock_session, mock_client):
             await service.generate_daily_report()
 
             mock_client.send_message.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_generate_daily_report_with_messages(mock_session, mock_client, mock_ai_service):
@@ -54,6 +59,7 @@ async def test_generate_daily_report_with_messages(mock_session, mock_client, mo
             args, _ = mock_client.send_message.call_args
             assert "Summary" in args[1]
             assert "Estatísticas" in args[1]
+
 
 @pytest.mark.asyncio
 async def test_generate_daily_report_no_channel_id(mock_session, mock_client, mock_ai_service):

@@ -43,9 +43,15 @@ def get_client():
         return MockClient()
 
     if settings.TELEGRAM_SESSION_STRING:
-        return TelegramClient(StringSession(settings.TELEGRAM_SESSION_STRING), settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH)
+        return TelegramClient(
+            StringSession(settings.TELEGRAM_SESSION_STRING),
+            settings.TELEGRAM_API_ID,
+            settings.TELEGRAM_API_HASH,
+        )
     else:
-        return TelegramClient(settings.TELEGRAM_SESSION_NAME, settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH)
+        return TelegramClient(
+            settings.TELEGRAM_SESSION_NAME, settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH
+        )
 
 
 client = get_client()

@@ -1,11 +1,11 @@
 import pytest
-import asyncio
-from unittest.mock import MagicMock, AsyncMock, patch, call
+from unittest.mock import MagicMock, AsyncMock, patch
 from backend.services.learning import LearningService
 from backend.services.reporting import ReportingService
 from backend.services.ai import AIService
 
 # --- Learning Service Tests ---
+
 
 @pytest.mark.asyncio
 async def test_learning_service_ingest_history_batch_processing():
@@ -30,7 +30,7 @@ async def test_learning_service_ingest_history_batch_processing():
     service.client = mock_client
 
     # Mock internal methods
-    service._save_message_to_db = MagicMock(return_value=1) # Returns DB ID
+    service._save_message_to_db = MagicMock(return_value=1)  # Returns DB ID
     service._analyze_and_extract = AsyncMock()
 
     # We need to mock asyncio.to_thread to just call the function synchronously or return a value
@@ -50,6 +50,7 @@ async def test_learning_service_ingest_history_batch_processing():
 
 
 # --- Reporting Service Tests ---
+
 
 @pytest.mark.asyncio
 async def test_reporting_service_grouping_logic():
@@ -86,8 +87,10 @@ async def test_reporting_service_grouping_logic():
         entity2.title = "Group B"
 
         async def get_entity_side_effect(chat_id):
-            if chat_id == 1: return entity1
-            if chat_id == 2: return entity2
+            if chat_id == 1:
+                return entity1
+            if chat_id == 2:
+                return entity2
             return MagicMock(title="Unknown")
 
         # We need to patch the global 'client' used in reporting.py, not an instance attr
@@ -115,7 +118,9 @@ async def test_reporting_service_grouping_logic():
                     assert len(data["Group A (ID: 1)"]) == 2
                     assert len(data["Group B (ID: 2)"]) == 1
 
+
 # --- AI Service Tests ---
+
 
 @pytest.mark.asyncio
 async def test_ai_service_summarize_grouped_data():
@@ -125,7 +130,9 @@ async def test_ai_service_summarize_grouped_data():
 
     # Test with Dict
     data = {
-        "Chat A": [MagicMock(sender_name="Alice", text="Hi", date=MagicMock(strftime=lambda x: "10:00"))]
+        "Chat A": [
+            MagicMock(sender_name="Alice", text="Hi", date=MagicMock(strftime=lambda x: "10:00"))
+        ]
     }
 
     await service.summarize_conversations(data)

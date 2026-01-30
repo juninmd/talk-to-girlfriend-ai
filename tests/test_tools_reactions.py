@@ -3,10 +3,12 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.tools import reactions
 
+
 @pytest.fixture
 def mock_client():
     with patch("backend.tools.reactions.client") as mock:
         yield mock
+
 
 @pytest.mark.asyncio
 async def test_send_reaction(mock_client):
@@ -16,6 +18,7 @@ async def test_send_reaction(mock_client):
     result = await reactions.send_reaction(chat_id=123, message_id=1, emoji="❤️")
     assert "Reaction '❤️' sent" in result
 
+
 @pytest.mark.asyncio
 async def test_remove_reaction(mock_client):
     mock_client.get_input_entity = AsyncMock(return_value="peer")
@@ -23,6 +26,7 @@ async def test_remove_reaction(mock_client):
 
     result = await reactions.remove_reaction(chat_id=123, message_id=1)
     assert "Reaction removed" in result
+
 
 @pytest.mark.asyncio
 async def test_get_message_reactions(mock_client):
@@ -44,5 +48,6 @@ async def test_get_message_reactions(mock_client):
     # But usually simple chars are fine. "🔥" is \ud83d\udd25 in JSON sometimes.
     # We can check for user_id to be safe or decode result.
     import json
+
     data = json.loads(result)
     assert data["reactions"][0]["emoji"] == "🔥"

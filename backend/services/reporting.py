@@ -38,7 +38,9 @@ class ReportingService:
             # But we don't abort because get_entity might need a network call that succeeds later.
             await client.get_entity(settings.REPORT_CHANNEL_ID)
         except Exception as e:
-            logger.warning(f"Could not verify REPORT_CHANNEL_ID access early: {e}. Attempting report anyway.")
+            logger.warning(
+                f"Could not verify REPORT_CHANNEL_ID access early: {e}. Attempting report anyway."
+            )
 
         # 1. Fetch messages from last 24h (Non-blocking)
         messages = await asyncio.to_thread(self._fetch_messages_for_report)
@@ -61,9 +63,9 @@ class ReportingService:
             try:
                 # Try to get entity to find the name
                 entity = await client.get_entity(chat_id)
-                if hasattr(entity, 'title'):
+                if hasattr(entity, "title"):
                     title = entity.title
-                elif hasattr(entity, 'first_name'):
+                elif hasattr(entity, "first_name"):
                     title = f"{entity.first_name} {entity.last_name or ''}".strip()
             except Exception:
                 # If we can't resolve, check if we have any sender name in the messages that matches the other person
@@ -79,8 +81,7 @@ class ReportingService:
         unique_chats = len(grouped_msgs)
 
         stats_text = (
-            f"- **Total de Mensagens:** {total_msgs}\n"
-            f"- **Conversas Ativas:** {unique_chats}"
+            f"- **Total de Mensagens:** {total_msgs}\n" f"- **Conversas Ativas:** {unique_chats}"
         )
 
         # 2. Summarize
@@ -111,7 +112,9 @@ class ReportingService:
                         f"Could not find entity for {settings.REPORT_CHANNEL_ID}. Ensure bot is admin or joined."
                     )
             except Exception as entity_err:
-                logger.error(f"Could not resolve channel {settings.REPORT_CHANNEL_ID}: {entity_err}")
+                logger.error(
+                    f"Could not resolve channel {settings.REPORT_CHANNEL_ID}: {entity_err}"
+                )
                 raise entity_err
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")

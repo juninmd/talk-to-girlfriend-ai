@@ -3,14 +3,17 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.tools import search
 
+
 @pytest.fixture
 def mock_client():
     with patch("backend.tools.search.client") as mock:
         yield mock
 
+
 @pytest.mark.asyncio
 async def test_search_public_chats(mock_client):
     from telethon.tl.types import User
+
     mock_result = MagicMock()
     mock_user = MagicMock(spec=User)
     mock_user.id = 123
@@ -25,6 +28,7 @@ async def test_search_public_chats(mock_client):
 
     result = await search.search_public_chats("test")
     assert "123" in result
+
 
 @pytest.mark.asyncio
 async def test_resolve_username(mock_client):

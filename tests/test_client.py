@@ -1,7 +1,8 @@
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import patch
 
 from backend.client import get_client, MockClient
+
 
 def test_get_client_mock():
     # Force mock client
@@ -13,6 +14,7 @@ def test_get_client_mock():
         c = get_client()
         assert isinstance(c, MockClient)
 
+
 def test_get_client_string_session():
     # We must patch StringSession because the real one validates the string
     with patch("backend.client.settings") as mock_settings:
@@ -22,12 +24,13 @@ def test_get_client_string_session():
 
         with patch("backend.client.StringSession") as mock_ss:
             with patch("backend.client.TelegramClient") as mock_tc:
-                c = get_client()
+                get_client()
                 mock_tc.assert_called_once()
                 # Check if StringSession was used
                 mock_ss.assert_called_with("session")
                 args, _ = mock_tc.call_args
                 assert args[0] == mock_ss.return_value
+
 
 def test_get_client_file_session():
     with patch("backend.client.settings") as mock_settings:
@@ -37,10 +40,11 @@ def test_get_client_file_session():
         mock_settings.TELEGRAM_SESSION_NAME = "session_file"
 
         with patch("backend.client.TelegramClient") as mock_tc:
-            c = get_client()
+            get_client()
             mock_tc.assert_called_once()
             args, _ = mock_tc.call_args
             assert args[0] == "session_file"
+
 
 @pytest.mark.asyncio
 async def test_mock_client_methods():
