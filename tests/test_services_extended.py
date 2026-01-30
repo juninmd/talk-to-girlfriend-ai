@@ -98,7 +98,8 @@ async def test_reporting_service_grouping_logic():
                 mock_ai_service.summarize_conversations.return_value = "Summary"
 
                 # Mock REPORT_CHANNEL_ID
-                with patch("backend.services.reporting.REPORT_CHANNEL_ID", 999):
+                with patch("backend.services.reporting.settings") as mock_settings:
+                    mock_settings.REPORT_CHANNEL_ID = 999
                     mock_client.send_message.return_value = True
 
                     await service.generate_daily_report()

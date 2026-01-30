@@ -1,10 +1,8 @@
 from typing import Dict, Any, Union, Optional
 from datetime import datetime, timedelta
-import asyncio
 
-from telethon.tl.types import User, Chat, Channel, ReactionEmoji, InputBotInlineMessageID
+from telethon.tl.types import User, Chat, Channel, ReactionEmoji
 from telethon import functions
-from fastapi import HTTPException, UploadFile
 
 from backend.client import client
 from backend.api.models import (
@@ -47,7 +45,8 @@ def format_message(message) -> Dict[str, Any]:
         if hasattr(message.sender, "first_name"):
             first = getattr(message.sender, "first_name", "") or ""
             last = getattr(message.sender, "last_name", "") or ""
-            result["sender_name"] = f"{first} {last}".strip() or "Unknown"
+            name = f"{first} {last}".strip()
+            result["sender_name"] = name or "Unknown"
         elif hasattr(message.sender, "title"):
             result["sender_name"] = message.sender.title
         else:
@@ -92,7 +91,9 @@ class TelegramService:
             chat_info = format_entity(entity)
             chat_info["unread_count"] = dialog.unread_count
             chat_info["last_message"] = (
-                dialog.message.message[:100] if dialog.message and dialog.message.message else None
+                dialog.message.message[:100]
+                if dialog.message and dialog.message.message
+                else None
             )
 
             if chat_type:
@@ -112,13 +113,18 @@ class TelegramService:
         return format_entity(entity)
 
     @staticmethod
-    async def get_messages(chat_id: Union[int, str], limit: int, offset_id: Optional[int] = None):
+    async def get_messages(
+        chat_id: Union[int, str], limit: int, offset_id: Optional[int] = None
+    ):
         entity = await get_entity_safe(chat_id)
         kwargs = {"limit": limit}
         if offset_id:
             kwargs["offset_id"] = offset_id
         messages = await client.get_messages(entity, **kwargs)
-        return {"messages": [format_message(msg) for msg in messages], "count": len(messages)}
+        return {
+            "messages": [format_message(msg) for msg in messages],
+            "count": len(messages),
+        }
 
     @staticmethod
     async def send_message(chat_id: Union[int, str], request: SendMessageRequest):
@@ -134,10 +140,14 @@ class TelegramService:
         }
 
     @staticmethod
-    async def schedule_message(chat_id: Union[int, str], request: ScheduleMessageRequest):
+    async def schedule_message(
+        chat_id: Union[int, str], request: ScheduleMessageRequest
+    ):
         entity = await get_entity_safe(chat_id)
         schedule_time = datetime.now() + timedelta(minutes=request.minutes_from_now)
-        result = await client.send_message(entity, request.message, schedule=schedule_time)
+        result = await client.send_message(
+            entity, request.message, schedule=schedule_time
+        )
         return {
             "success": True,
             "message_id": result.id,
@@ -156,7 +166,9 @@ class TelegramService:
         import tempfile
         import os
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{filename}") as tmp:
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=f"_{filename}"
+        ) as tmp:
             tmp.write(file_content)
             tmp_path = tmp.name
 
@@ -207,7 +219,9 @@ class TelegramService:
         return {"contacts": contacts, "count": len(contacts)}
 
     @staticmethod
-    async def send_reaction(chat_id: Union[int, str], message_id: int, request: ReactionRequest):
+    async def send_reaction(
+        chat_id: Union[int, str], message_id: int, request: ReactionRequest
+    ):
         entity = await get_entity_safe(chat_id)
         await client(
             functions.messages.SendReactionRequest(
@@ -220,7 +234,9 @@ class TelegramService:
         return {"success": True, "emoji": request.emoji}
 
     @staticmethod
-    async def edit_message(chat_id: Union[int, str], message_id: int, request: EditMessageRequest):
+    async def edit_message(
+        chat_id: Union[int, str], message_id: int, request: EditMessageRequest
+    ):
         entity = await get_entity_safe(chat_id)
         result = await client.edit_message(entity, message_id, request.new_text)
         return {"success": True, "message_id": result.id}
@@ -238,7 +254,10 @@ class TelegramService:
         from_entity = await get_entity_safe(chat_id)
         to_entity = await get_entity_safe(to_chat_id)
         result = await client.forward_messages(to_entity, message_id, from_entity)
-        return {"success": True, "message_id": result.id if hasattr(result, "id") else None}
+        return {
+            "success": True,
+            "message_id": result.id if hasattr(result, "id") else None,
+        }
 
     @staticmethod
     async def mark_as_read(chat_id: Union[int, str]):
@@ -256,7 +275,10 @@ class TelegramService:
     async def search_messages(chat_id: Union[int, str], query: str, limit: int):
         entity = await get_entity_safe(chat_id)
         messages = await client.get_messages(entity, limit=limit, search=query)
-        return {"messages": [format_message(msg) for msg in messages], "count": len(messages)}
+        return {
+            "messages": [format_message(msg) for msg in messages],
+            "count": len(messages),
+        }
 
     @staticmethod
     async def get_user_status(user_id: Union[int, str]):
@@ -285,7 +307,8 @@ class TelegramService:
         photos = await client.get_profile_photos(entity, limit=limit)
         return {
             "photos": [
-                {"id": p.id, "date": p.date.isoformat() if p.date else None} for p in photos
+                {"id": p.id, "date": p.date.isoformat() if p.date else None}
+                for p in photos
             ],
             "count": len(photos),
         }

@@ -1,19 +1,8 @@
-from typing import Union, Optional, List
-from mcp.server.fastmcp import FastMCP, Context
-from mcp.types import ToolAnnotations
-from telethon import functions, utils
+from typing import Union, List
+from telethon import functions
 from telethon.tl.types import User, Chat, Channel
 from backend.client import client
-from backend.utils import log_and_format_error, validate_id, get_sender_name, format_entity
-
-# We can't use @mcp.tool directly here if we want to separate files easily without passing `mcp` object everywhere.
-# Instead, we'll define standard async functions and register them in server.py.
-# Or we can create a list of tools and register them.
-# The best way for modular FastMCP is using decorators on a FastMCP instance, but we can also use `mcp.add_tool`.
-# For now, I will define them as regular async functions and use `mcp.tool()` decorator in server.py by importing them.
-# Wait, FastMCP decorators need the function. I can decorate them in `server.py` or use a helper.
-
-# Strategy: Define functions here. Import them in server.py and apply @mcp.tool().
+from backend.utils import log_and_format_error, validate_id
 
 
 async def get_chats(page: int = 1, page_size: int = 20) -> str:
@@ -34,7 +23,9 @@ async def get_chats(page: int = 1, page_size: int = 20) -> str:
         for dialog in chats:
             entity = dialog.entity
             chat_id = entity.id
-            title = getattr(entity, "title", None) or getattr(entity, "first_name", "Unknown")
+            title = getattr(entity, "title", None) or getattr(
+                entity, "first_name", "Unknown"
+            )
             lines.append(f"Chat ID: {chat_id}, Title: {title}")
         return "\n".join(lines)
     except Exception as e:
@@ -83,7 +74,9 @@ async def list_chats(chat_type: str = None, limit: int = 20) -> str:
             unread_count = getattr(dialog, "unread_count", 0) or 0
             inner_dialog = getattr(dialog, "dialog", None)
             unread_mark = (
-                bool(getattr(inner_dialog, "unread_mark", False)) if inner_dialog else False
+                bool(getattr(inner_dialog, "unread_mark", False))
+                if inner_dialog
+                else False
             )
 
             if unread_count > 0:
@@ -96,7 +89,7 @@ async def list_chats(chat_type: str = None, limit: int = 20) -> str:
             results.append(chat_info)
 
         if not results:
-            return f"No chats found matching the criteria."
+            return "No chats found matching the criteria."
         return "\n".join(results)
     except Exception as e:
         return log_and_format_error("list_chats", e, chat_type=chat_type, limit=limit)
@@ -120,7 +113,9 @@ async def get_chat(chat_id: Union[int, str]) -> str:
         if hasattr(entity, "title"):
             result.append(f"Title: {entity.title}")
             chat_type = (
-                "Channel" if is_channel and getattr(entity, "broadcast", False) else "Group"
+                "Channel"
+                if is_channel and getattr(entity, "broadcast", False)
+                else "Group"
             )
             if is_channel and getattr(entity, "megagroup", False):
                 chat_type = "Supergroup"
@@ -130,7 +125,9 @@ async def get_chat(chat_id: Union[int, str]) -> str:
             if hasattr(entity, "username") and entity.username:
                 result.append(f"Username: @{entity.username}")
             try:
-                participants_count = (await client.get_participants(entity, limit=0)).total
+                participants_count = (
+                    await client.get_participants(entity, limit=0)
+                ).total
                 result.append(f"Participants: {participants_count}")
             except Exception as pe:
                 result.append(f"Participants: Error fetching ({pe})")
@@ -139,7 +136,7 @@ async def get_chat(chat_id: Union[int, str]) -> str:
             if entity.last_name:
                 name += f" {entity.last_name}"
             result.append(f"Name: {name}")
-            result.append(f"Type: User")
+            result.append("Type: User")
             if entity.username:
                 result.append(f"Username: @{entity.username}")
             if entity.phone:
@@ -172,7 +169,9 @@ async def leave_chat(chat_id: Union[int, str]) -> str:
             try:
                 me = await client.get_me(input_peer=True)
                 await client(
-                    functions.messages.DeleteChatUserRequest(chat_id=entity.id, user_id=me)
+                    functions.messages.DeleteChatUserRequest(
+                        chat_id=entity.id, user_id=me
+                    )
                 )
                 chat_name = getattr(entity, "title", str(chat_id))
                 return f"Left basic group {chat_name} (ID: {chat_id})."
@@ -191,7 +190,9 @@ async def leave_chat(chat_id: Union[int, str]) -> str:
         else:
             return log_and_format_error(
                 "leave_chat",
-                Exception(f"Cannot leave chat ID {chat_id} of type {type(entity).__name__}."),
+                Exception(
+                    f"Cannot leave chat ID {chat_id} of type {type(entity).__name__}."
+                ),
                 chat_id=chat_id,
             )
     except Exception as e:
@@ -203,14 +204,16 @@ async def get_invite_link(chat_id: Union[int, str]) -> str:
     try:
         entity = await client.get_entity(chat_id)
         try:
-            result = await client(functions.messages.ExportChatInviteRequest(peer=entity))
+            result = await client(
+                functions.messages.ExportChatInviteRequest(peer=entity)
+            )
             return result.link
-        except:
+        except Exception:
             pass
         try:
             invite_link = await client.export_chat_invite_link(entity)
             return invite_link
-        except:
+        except Exception:
             pass
         return "Could not retrieve invite link."
     except Exception as e:
@@ -226,7 +229,9 @@ async def join_chat_by_link(link: str) -> str:
         else:
             hash_part = link
 
-        result = await client(functions.messages.ImportChatInviteRequest(hash=hash_part))
+        result = await client(
+            functions.messages.ImportChatInviteRequest(hash=hash_part)
+        )
         if result and hasattr(result, "chats") and result.chats:
             chat_title = getattr(result.chats[0], "title", "Unknown Chat")
             return f"Successfully joined chat: {chat_title}"
@@ -241,11 +246,13 @@ async def create_group(title: str, user_ids: List[Union[int, str]]) -> str:
         for user_id in user_ids:
             try:
                 users.append(await client.get_entity(user_id))
-            except:
+            except Exception:
                 pass
         if not users:
             return "Error: No valid users provided"
-        result = await client(functions.messages.CreateChatRequest(users=users, title=title))
+        result = await client(
+            functions.messages.CreateChatRequest(users=users, title=title)
+        )
         if hasattr(result, "chats") and result.chats:
             return f"Group created with ID: {result.chats[0].id}"
         return "Group created."
@@ -316,9 +323,13 @@ async def edit_chat_title(chat_id: Union[int, str], title: str) -> str:
     try:
         entity = await client.get_entity(chat_id)
         if isinstance(entity, Channel):
-            await client(functions.channels.EditTitleRequest(channel=entity, title=title))
+            await client(
+                functions.channels.EditTitleRequest(channel=entity, title=title)
+            )
         elif isinstance(entity, Chat):
-            await client(functions.messages.EditChatTitleRequest(chat_id=chat_id, title=title))
+            await client(
+                functions.messages.EditChatTitleRequest(chat_id=chat_id, title=title)
+            )
         else:
             return "Cannot edit title for this entity."
         return f"Chat {chat_id} title updated to '{title}'."
@@ -358,7 +369,9 @@ async def delete_chat_photo(chat_id: Union[int, str]) -> str:
         entity = await client.get_entity(chat_id)
         if isinstance(entity, Channel):
             await client(
-                functions.channels.EditPhotoRequest(channel=entity, photo=InputChatPhotoEmpty())
+                functions.channels.EditPhotoRequest(
+                    channel=entity, photo=InputChatPhotoEmpty()
+                )
             )
         elif isinstance(entity, Chat):
             await client(

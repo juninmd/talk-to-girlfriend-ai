@@ -45,10 +45,12 @@ async def test_ai_service_extract_facts_with_markdown():
 @pytest.mark.asyncio
 async def test_reporting_service_generate_daily_report():
     # Mock REPORT_CHANNEL_ID if needed, but we can patch it or rely on env
-    with patch("backend.services.reporting.REPORT_CHANNEL_ID", 123456), \
+    with patch("backend.services.reporting.settings") as mock_settings, \
          patch("backend.services.reporting.client", new_callable=AsyncMock) as mock_client, \
          patch("backend.services.reporting.Session") as mock_session_cls, \
          patch("backend.services.ai.ai_service.summarize_conversations", new_callable=AsyncMock) as mock_summarize:
+
+        mock_settings.REPORT_CHANNEL_ID = 123456
 
         # Mock fetch messages
         mock_session = MagicMock()

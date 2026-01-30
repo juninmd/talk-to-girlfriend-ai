@@ -4,7 +4,7 @@ from telethon import events
 from telethon.tl.types import User
 from backend.client import client
 from backend.services.ai import ai_service
-from backend.config import CONVERSATION_MIN_DELAY, CONVERSATION_MAX_DELAY, CONVERSATION_TYPING_SPEED
+from backend.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ class ConversationService:
         """Generates a response using AI and sends it."""
         try:
             # Simulate processing/reading time
-            delay = min(CONVERSATION_MAX_DELAY, max(CONVERSATION_MIN_DELAY, len(user_message) * CONVERSATION_TYPING_SPEED))
+            delay = min(settings.CONVERSATION_MAX_DELAY, max(settings.CONVERSATION_MIN_DELAY, len(user_message) * settings.CONVERSATION_TYPING_SPEED))
             await asyncio.sleep(delay)
 
             async with self.client.action(chat_id, "typing"):
@@ -55,7 +55,7 @@ class ConversationService:
 
                 # Wait a bit more to simulate typing the response
                 # Allow slightly longer delay for typing long responses
-                typing_delay = min(CONVERSATION_MAX_DELAY * 1.5, len(response_text) * CONVERSATION_TYPING_SPEED)
+                typing_delay = min(settings.CONVERSATION_MAX_DELAY * 1.5, len(response_text) * settings.CONVERSATION_TYPING_SPEED)
                 await asyncio.sleep(typing_delay)
 
                 if response_text:

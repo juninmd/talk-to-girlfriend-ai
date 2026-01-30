@@ -40,7 +40,7 @@ async def get_gif_search(query: str, limit: int = 10) -> str:
             return json.dumps(
                 [g.document.id for g in result.gifs], indent=2, default=json_serializer
             )
-        except:
+        except Exception:
             result = await client(
                 functions.messages.SearchRequest(
                     peer="gif",

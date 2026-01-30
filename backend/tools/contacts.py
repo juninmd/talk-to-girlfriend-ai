@@ -1,4 +1,4 @@
-from typing import Union, List
+from typing import Union
 from telethon import functions
 from backend.client import client
 from backend.utils import log_and_format_error, validate_id

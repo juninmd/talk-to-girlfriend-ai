@@ -1,4 +1,5 @@
 import pytest
+import asyncio
 from unittest.mock import MagicMock, AsyncMock, patch
 
 # We need to mock FastMCP before importing server
@@ -59,6 +60,11 @@ async def test_main_entry_point():
             server.main()
             mock_nest.assert_called_once()
             mock_run.assert_called_once()
+
+            # Close the coroutine to avoid RuntimeWarning
+            args, _ = mock_run.call_args
+            if args and asyncio.iscoroutine(args[0]):
+                args[0].close()
 
 @pytest.mark.asyncio
 async def test_main_exception(mock_client):

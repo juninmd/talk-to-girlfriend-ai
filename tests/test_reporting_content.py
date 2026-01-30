@@ -46,7 +46,8 @@ async def test_reporting_grouping_logic():
                 mock_client.send_message = AsyncMock()
 
                 # Patch REPORT_CHANNEL_ID to ensure execution proceeds
-                with patch('backend.services.reporting.REPORT_CHANNEL_ID', 999):
+                with patch('backend.services.reporting.settings') as mock_settings:
+                    mock_settings.REPORT_CHANNEL_ID = 999
                     mock_summarize.return_value = "Summary generated."
 
                     # Act

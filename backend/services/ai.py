@@ -7,7 +7,7 @@ import google.generativeai as genai
 from typing import List, Dict, Any
 from sqlmodel import Session, select
 from backend.database import engine, Message, Fact
-from backend.config import GOOGLE_API_KEY, AI_CONTEXT_FACT_LIMIT
+from backend.settings import settings
 from backend.prompts import (
     FACT_EXTRACTION_PROMPT,
     SUMMARY_PROMPT,
@@ -18,14 +18,14 @@ from backend.utils import async_retry
 logger = logging.getLogger(__name__)
 
 # Configure Gemini
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
+if settings.GOOGLE_API_KEY:
+    genai.configure(api_key=settings.GOOGLE_API_KEY)
 
 
 class AIService:
     def __init__(self):
         self.model = None
-        if GOOGLE_API_KEY:
+        if settings.GOOGLE_API_KEY:
             # Using Gemini 1.5 Flash for better performance and cost-efficiency
             self.model = genai.GenerativeModel("gemini-1.5-flash")
         else:
@@ -124,7 +124,7 @@ class AIService:
                 select(Fact)
                 .where(Fact.chat_id == chat_id)
                 .order_by(Fact.created_at.desc())
-                .limit(AI_CONTEXT_FACT_LIMIT)
+                .limit(settings.AI_CONTEXT_FACT_LIMIT)
             ).all()
             return history, facts
 

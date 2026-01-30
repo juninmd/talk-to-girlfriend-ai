@@ -1,6 +1,6 @@
 from typing import Union
 from telethon import functions
-from telethon.tl.types import ReactionEmoji, ReactionCustomEmoji
+from telethon.tl.types import ReactionEmoji
 from backend.client import client
 from backend.utils import log_and_format_error, validate_id, json_serializer
 import json

@@ -1,11 +1,6 @@
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-from backend.config import (
-    TELEGRAM_API_ID,
-    TELEGRAM_API_HASH,
-    TELEGRAM_SESSION_NAME,
-    SESSION_STRING,
-)
+from backend.settings import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -43,14 +38,14 @@ class MockClient:
 
 
 def get_client():
-    if not TELEGRAM_API_ID or not TELEGRAM_API_HASH:
+    if not settings.TELEGRAM_API_ID or not settings.TELEGRAM_API_HASH:
         logger.warning("TELEGRAM_API_ID or TELEGRAM_API_HASH not found. Using MockClient.")
         return MockClient()
 
-    if SESSION_STRING:
-        return TelegramClient(StringSession(SESSION_STRING), TELEGRAM_API_ID, TELEGRAM_API_HASH)
+    if settings.TELEGRAM_SESSION_STRING:
+        return TelegramClient(StringSession(settings.TELEGRAM_SESSION_STRING), settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH)
     else:
-        return TelegramClient(TELEGRAM_SESSION_NAME, TELEGRAM_API_ID, TELEGRAM_API_HASH)
+        return TelegramClient(settings.TELEGRAM_SESSION_NAME, settings.TELEGRAM_API_ID, settings.TELEGRAM_API_HASH)
 
 
 client = get_client()

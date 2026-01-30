@@ -1,4 +1,4 @@
-from typing import Union, List, Optional
+from typing import Union
 from telethon import functions
 from telethon.tl.types import (
     ChatAdminRights,
@@ -8,7 +8,7 @@ from telethon.tl.types import (
 )
 from telethon.errors import rpcerrorlist
 from backend.client import client
-from backend.utils import log_and_format_error, validate_id, format_entity, json_serializer
+from backend.utils import log_and_format_error, validate_id, json_serializer
 import json
 
 
@@ -47,7 +47,9 @@ async def promote_admin(
         except rpcerrorlist.UserNotMutualContactError:
             return "Error: Cannot promote users who are not mutual contacts."
     except Exception as e:
-        return log_and_format_error("promote_admin", e, group_id=group_id, user_id=user_id)
+        return log_and_format_error(
+            "promote_admin", e, group_id=group_id, user_id=user_id
+        )
 
 
 @validate_id("group_id", "user_id")
@@ -78,7 +80,9 @@ async def demote_admin(group_id: Union[int, str], user_id: Union[int, str]) -> s
         except rpcerrorlist.UserNotMutualContactError:
             return "Error: Cannot modify admin status of users who are not mutual contacts."
     except Exception as e:
-        return log_and_format_error("demote_admin", e, group_id=group_id, user_id=user_id)
+        return log_and_format_error(
+            "demote_admin", e, group_id=group_id, user_id=user_id
+        )
 
 
 @validate_id("chat_id", "user_id")
@@ -150,7 +154,9 @@ async def unban_user(chat_id: Union[int, str], user_id: Union[int, str]) -> str:
 @validate_id("chat_id")
 async def get_admins(chat_id: Union[int, str]) -> str:
     try:
-        participants = await client.get_participants(chat_id, filter=ChannelParticipantsAdmins())
+        participants = await client.get_participants(
+            chat_id, filter=ChannelParticipantsAdmins()
+        )
         lines = [
             f"ID: {p.id}, Name: {getattr(p, 'first_name', '')} {getattr(p, 'last_name', '')}".strip()
             for p in participants
@@ -180,11 +186,19 @@ async def get_recent_actions(chat_id: Union[int, str]) -> str:
     try:
         result = await client(
             functions.channels.GetAdminLogRequest(
-                channel=chat_id, q="", events_filter=None, admins=[], max_id=0, min_id=0, limit=20
+                channel=chat_id,
+                q="",
+                events_filter=None,
+                admins=[],
+                max_id=0,
+                min_id=0,
+                limit=20,
             )
         )
         if not result or not result.events:
             return "No recent admin actions found."
-        return json.dumps([e.to_dict() for e in result.events], indent=2, default=json_serializer)
+        return json.dumps(
+            [e.to_dict() for e in result.events], indent=2, default=json_serializer
+        )
     except Exception as e:
         return log_and_format_error("get_recent_actions", e, chat_id=chat_id)

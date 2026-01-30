@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from backend.database import engine, Message
 from backend.services.ai import ai_service
 from backend.client import client
-from backend.config import REPORT_CHANNEL_ID
+from backend.settings import settings
 from backend.utils import async_retry
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class ReportingService:
         """
         logger.info("Generating daily report...")
 
-        if not REPORT_CHANNEL_ID:
+        if not settings.REPORT_CHANNEL_ID:
             logger.warning("Daily Report skipped: REPORT_CHANNEL_ID not set in environment.")
             return
 
@@ -36,7 +36,7 @@ class ReportingService:
         try:
             # Check if we can access the entity. If not, we might fail sending later, so we warn early.
             # But we don't abort because get_entity might need a network call that succeeds later.
-            await client.get_entity(REPORT_CHANNEL_ID)
+            await client.get_entity(settings.REPORT_CHANNEL_ID)
         except Exception as e:
             logger.warning(f"Could not verify REPORT_CHANNEL_ID access early: {e}. Attempting report anyway.")
 
@@ -102,16 +102,16 @@ class ReportingService:
                 # For channels/supergroups, we usually need the entity cached or access hash
                 # If we can't find it, we try to get it first
                 try:
-                    entity = await client.get_entity(REPORT_CHANNEL_ID)
+                    entity = await client.get_entity(settings.REPORT_CHANNEL_ID)
                     await client.send_message(entity, report_text)
-                    logger.info(f"Daily report sent successfully to {REPORT_CHANNEL_ID}.")
+                    logger.info(f"Daily report sent successfully to {settings.REPORT_CHANNEL_ID}.")
                 except ValueError:
                     # Sometimes get_entity fails if not seen before
                     logger.warning(
-                        f"Could not find entity for {REPORT_CHANNEL_ID}. Ensure bot is admin or joined."
+                        f"Could not find entity for {settings.REPORT_CHANNEL_ID}. Ensure bot is admin or joined."
                     )
             except Exception as entity_err:
-                logger.error(f"Could not resolve channel {REPORT_CHANNEL_ID}: {entity_err}")
+                logger.error(f"Could not resolve channel {settings.REPORT_CHANNEL_ID}: {entity_err}")
                 raise entity_err
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")

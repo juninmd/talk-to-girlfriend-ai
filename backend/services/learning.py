@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from backend.client import client
 from backend.database import engine, Message, Fact
 from backend.services.ai import ai_service
-from backend.config import LEARNING_BATCH_SIZE, LEARNING_DELAY
+from backend.settings import settings
 import logging
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class LearningService:
             ]
 
             # Analyze in batches to avoid overwhelming the API
-            batch_size = LEARNING_BATCH_SIZE
+            batch_size = settings.LEARNING_BATCH_SIZE
             total_batches = (len(relevant_msgs) + batch_size - 1) // batch_size
 
             for i in range(0, len(relevant_msgs), batch_size):
@@ -93,7 +93,7 @@ class LearningService:
 
                 # Run batch and wait a bit
                 await asyncio.gather(*tasks)
-                await asyncio.sleep(LEARNING_DELAY)  # Rate limit protection
+                await asyncio.sleep(settings.LEARNING_DELAY)  # Rate limit protection
 
             logger.info(f"Ingested {count} messages for chat {chat_id}. Analyzed {len(relevant_msgs)} for facts.")
             return count
