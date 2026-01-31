@@ -43,7 +43,9 @@ class ReportingService:
         # Fallback to 'me' (Saved Messages) if no channel is set or if resolution failed
         if not target_entity:
             try:
-                logger.info("REPORT_CHANNEL_ID invalid or missing. Falling back to 'Saved Messages'.")
+                logger.info(
+                    "REPORT_CHANNEL_ID invalid or missing. Falling back to 'Saved Messages'."
+                )
                 target_entity = await self.client.get_me()
             except Exception as e:
                 logger.error(f"Could not resolve 'me' for fallback report: {e}")
