@@ -47,6 +47,7 @@ async def test_reporting_grouping_logic():
             "backend.services.reporting.ai_service.summarize_conversations", new_callable=AsyncMock
         ) as mock_summarize:
             with patch("backend.services.reporting.client") as mock_client:
+                reporting_service.client = mock_client
                 # Mock client.get_entity to return objects with title/first_name
                 mock_entity_100 = MagicMock()
                 mock_entity_100.title = "Project Alpha"

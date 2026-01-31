@@ -80,6 +80,7 @@ async def test_reporting_service_generate_daily_report():
         mock_entity.title = "Test Chat"
         mock_client.get_entity.return_value = mock_entity
 
+        reporting_service.client = mock_client
         await reporting_service.generate_daily_report()
 
         # Verify client.send_message called

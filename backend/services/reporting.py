@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class ReportingService:
+    def __init__(self):
+        self.client = client
+
     def _fetch_messages_for_report(self):
         """Fetches messages in a thread."""
         cutoff = datetime.now(timezone.utc) - timedelta(days=1)
@@ -28,19 +31,23 @@ class ReportingService:
         """
         logger.info("Generating daily report...")
 
-        if not settings.REPORT_CHANNEL_ID:
-            logger.warning("Daily Report skipped: REPORT_CHANNEL_ID not set in environment.")
-            return
+        target_entity = None
+        if settings.REPORT_CHANNEL_ID:
+            try:
+                target_entity = await self.client.get_entity(settings.REPORT_CHANNEL_ID)
+            except Exception as e:
+                logger.warning(
+                    f"Could not resolve configured REPORT_CHANNEL_ID ({settings.REPORT_CHANNEL_ID}): {e}"
+                )
 
-        # Validate Channel ID access early
-        try:
-            # Check if we can access the entity. If not, we might fail sending later, so we warn early.
-            # But we don't abort because get_entity might need a network call that succeeds later.
-            await client.get_entity(settings.REPORT_CHANNEL_ID)
-        except Exception as e:
-            logger.warning(
-                f"Could not verify REPORT_CHANNEL_ID access early: {e}. Attempting report anyway."
-            )
+        # Fallback to 'me' (Saved Messages) if no channel is set or if resolution failed
+        if not target_entity:
+            try:
+                logger.info("REPORT_CHANNEL_ID invalid or missing. Falling back to 'Saved Messages'.")
+                target_entity = await self.client.get_me()
+            except Exception as e:
+                logger.error(f"Could not resolve 'me' for fallback report: {e}")
+                return
 
         # 1. Fetch messages from last 24h (Non-blocking)
         messages = await asyncio.to_thread(self._fetch_messages_for_report)
@@ -57,24 +64,7 @@ class ReportingService:
             grouped_msgs[m.chat_id].append(m)
 
         # Resolve titles and prepare data for AI
-        final_data = {}
-        for chat_id, msgs in grouped_msgs.items():
-            title = f"Chat {chat_id}"
-            try:
-                # Try to get entity to find the name
-                entity = await client.get_entity(chat_id)
-                if hasattr(entity, "title"):
-                    title = entity.title
-                elif hasattr(entity, "first_name"):
-                    title = f"{entity.first_name} {entity.last_name or ''}".strip()
-            except Exception:
-                # If we can't resolve, check if we have any sender name in the messages that matches the other person
-                # This is a fallback heuristic
-                pass
-
-            # Ensure unique key by appending ID
-            unique_key = f"{title} (ID: {chat_id})"
-            final_data[unique_key] = msgs
+        final_data = await self._resolve_chat_titles(grouped_msgs)
 
         # Calculate stats
         total_msgs = len(messages)
@@ -96,29 +86,33 @@ class ReportingService:
 ## 📝 Resumo
 {summary}"""
 
-        # 3. Send to Telegram Channel
+        # 3. Send to Telegram Channel (or Fallback)
         try:
-            try:
-                # Try sending directly if ID is valid
-                # For channels/supergroups, we usually need the entity cached or access hash
-                # If we can't find it, we try to get it first
-                try:
-                    entity = await client.get_entity(settings.REPORT_CHANNEL_ID)
-                    await client.send_message(entity, report_text)
-                    logger.info(f"Daily report sent successfully to {settings.REPORT_CHANNEL_ID}.")
-                except ValueError:
-                    # Sometimes get_entity fails if not seen before
-                    logger.warning(
-                        f"Could not find entity for {settings.REPORT_CHANNEL_ID}. Ensure bot is admin or joined."
-                    )
-            except Exception as entity_err:
-                logger.error(
-                    f"Could not resolve channel {settings.REPORT_CHANNEL_ID}: {entity_err}"
-                )
-                raise entity_err
+            if target_entity:
+                await self.client.send_message(target_entity, report_text)
+                logger.info(f"Daily report sent successfully to {target_entity.id}.")
+            else:
+                logger.error("No valid target entity found to send the report.")
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")
-            raise e
+            # We don't raise here to avoid crashing the scheduler
+
+    async def _resolve_chat_titles(self, grouped_msgs):
+        final_data = {}
+        for chat_id, msgs in grouped_msgs.items():
+            title = f"Chat {chat_id}"
+            try:
+                entity = await self.client.get_entity(chat_id)
+                if hasattr(entity, "title"):
+                    title = entity.title
+                elif hasattr(entity, "first_name"):
+                    title = f"{entity.first_name} {entity.last_name or ''}".strip()
+            except Exception:
+                pass
+
+            unique_key = f"{title} (ID: {chat_id})"
+            final_data[unique_key] = msgs
+        return final_data
 
 
 reporting_service = ReportingService()

@@ -193,8 +193,8 @@ class LearningService:
             db_message_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
 
             # 2. Asynchronously extract facts (Learning)
-            # Only learn from non-trivial messages
-            if text and len(text) > 10 and db_message_id:
+            # Only learn from non-trivial INCOMING messages (avoid learning from self)
+            if not is_outgoing and text and len(text) > 10 and db_message_id:
                 asyncio.create_task(self._analyze_and_extract(text, db_message_id, chat_id))
 
         except Exception as e:

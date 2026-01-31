@@ -63,7 +63,11 @@ async def test_generate_daily_report_with_messages(mock_session, mock_client, mo
 
 @pytest.mark.asyncio
 async def test_generate_daily_report_no_channel_id(mock_session, mock_client, mock_ai_service):
+    # Test Fallback to Saved Messages
     mock_msg = MagicMock()
+    mock_client.get_me = AsyncMock(return_value=MagicMock(id=12345))
+    mock_client.send_message = AsyncMock()
+
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
         mock_thread.return_value = [mock_msg]
         mock_ai_service.summarize_conversations = AsyncMock(return_value="Summary")
@@ -72,4 +76,7 @@ async def test_generate_daily_report_no_channel_id(mock_session, mock_client, mo
             mock_settings.REPORT_CHANNEL_ID = None
             service = ReportingService()
             await service.generate_daily_report()
-            mock_client.send_message.assert_not_called()
+
+            # Should call get_me and then send_message
+            mock_client.get_me.assert_called_once()
+            mock_client.send_message.assert_called_once()
