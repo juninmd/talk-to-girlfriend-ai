@@ -1,4 +1,4 @@
-from typing import Optional, List, Union, Any
+from typing import List, Union, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -10,11 +10,13 @@ class SendMessageRequest(BaseModel):
 
 class ScheduleMessageRequest(BaseModel):
     message: str
-    minutes_from_now: int = Field(..., ge=1, le=525600)
+    minutes_from_now: int
 
 
 class SendFileRequest(BaseModel):
+    chat_id: Union[int, str]
     caption: Optional[str] = None
+    voice_note: bool = False
 
 
 class ReactionRequest(BaseModel):
@@ -26,25 +28,18 @@ class EditMessageRequest(BaseModel):
     new_text: str
 
 
-class ChatResponse(BaseModel):
+class Chat(BaseModel):
     id: int
-    type: str
     title: Optional[str] = None
     username: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    phone: Optional[str] = None
-    unread_count: Optional[int] = None
-    last_message: Optional[str] = None
+    type: str
 
 
-class MessageResponse(BaseModel):
+class Message(BaseModel):
     id: int
-    date: Optional[str]
-    text: Optional[str]
-    out: bool
-    sender_name: str
-    sender_id: Optional[int]
+    date: Optional[str] = None
+    text: Optional[str] = None
+    sender_id: Optional[int] = None
+    sender_name: Optional[str] = "Unknown"
     reply_to_msg_id: Optional[int] = None
-    has_media: bool
-    media_type: Optional[str] = None
+    media: Optional[Any] = None

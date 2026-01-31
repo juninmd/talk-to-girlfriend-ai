@@ -1,4 +1,4 @@
-from typing import Union, List, Optional
+from typing import Union
 from telethon import functions
 from telethon.tl.types import (
     ChatAdminRights,
@@ -8,7 +8,7 @@ from telethon.tl.types import (
 )
 from telethon.errors import rpcerrorlist
 from backend.client import client
-from backend.utils import log_and_format_error, validate_id, format_entity, json_serializer
+from backend.utils import log_and_format_error, validate_id, json_serializer
 import json
 
 
@@ -180,7 +180,13 @@ async def get_recent_actions(chat_id: Union[int, str]) -> str:
     try:
         result = await client(
             functions.channels.GetAdminLogRequest(
-                channel=chat_id, q="", events_filter=None, admins=[], max_id=0, min_id=0, limit=20
+                channel=chat_id,
+                q="",
+                events_filter=None,
+                admins=[],
+                max_id=0,
+                min_id=0,
+                limit=20,
             )
         )
         if not result or not result.events:

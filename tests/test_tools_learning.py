@@ -1,12 +1,14 @@
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 
 from backend.tools import learning
+
 
 @pytest.fixture
 def mock_learning_service():
     with patch("backend.tools.learning.learning_service") as mock:
         yield mock
+
 
 @pytest.mark.asyncio
 async def test_learn_from_chat(mock_learning_service):

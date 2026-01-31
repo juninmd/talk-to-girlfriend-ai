@@ -82,7 +82,7 @@ def validate_id(*param_names_to_validate):
                         if not (-(2**63) <= value <= 2**63 - 1):
                             return (
                                 None,
-                                f"Invalid {p_name}: {value}. ID is out of the valid integer range.",
+                                f"Invalid {p_name}: {value}. ID is out of range.",
                             )
                         return value, None
                     if isinstance(value, str):
@@ -91,7 +91,7 @@ def validate_id(*param_names_to_validate):
                             if not (-(2**63) <= int_value <= 2**63 - 1):
                                 return (
                                     None,
-                                    f"Invalid {p_name}: {value}. ID is out of the valid integer range.",
+                                    f"Invalid {p_name}: {value}. ID is out of range.",
                                 )
                             return int_value, None
                         except ValueError:
@@ -100,11 +100,11 @@ def validate_id(*param_names_to_validate):
                             else:
                                 return (
                                     None,
-                                    f"Invalid {p_name}: '{value}'. Must be a valid integer ID, or a username string.",
+                                    f"Invalid {p_name}: '{value}'. Must be integer or username.",
                                 )
                     return (
                         None,
-                        f"Invalid {p_name}: {value}. Type must be an integer or a string.",
+                        f"Invalid {p_name}: {value}. Type must be int or str.",
                     )
 
                 if isinstance(param_value, list):
@@ -180,6 +180,7 @@ def async_retry(max_attempts: int = 3, delay: float = 1.0):
     """
     Decorator to retry async functions with exponential backoff.
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -191,7 +192,9 @@ def async_retry(max_attempts: int = 3, delay: float = 1.0):
                 except Exception as e:
                     attempts += 1
                     if attempts >= max_attempts:
-                        logger.error(f"Function {func.__name__} failed after {max_attempts} attempts. Error: {e}")
+                        logger.error(
+                            f"Function {func.__name__} failed after {max_attempts} attempts. Error: {e}"
+                        )
                         raise e
 
                     logger.warning(
@@ -200,5 +203,7 @@ def async_retry(max_attempts: int = 3, delay: float = 1.0):
                     )
                     await asyncio.sleep(current_delay)
                     current_delay *= 2  # Exponential backoff
+
         return wrapper
+
     return decorator

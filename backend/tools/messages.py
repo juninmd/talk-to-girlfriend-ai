@@ -1,7 +1,4 @@
-from typing import Union, Optional
-from datetime import datetime, timedelta
-import asyncio
-from telethon import utils
+from typing import Union
 from backend.client import client
 from backend.utils import log_and_format_error, validate_id, get_sender_name
 

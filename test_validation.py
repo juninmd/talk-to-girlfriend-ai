@@ -1,18 +1,10 @@
 import pytest
 import os
-from unittest.mock import MagicMock
+from backend.utils import validate_id
 
 # Mock environment variables BEFORE importing anything that might use them
 os.environ["TELEGRAM_API_ID"] = "12345"
 os.environ["TELEGRAM_API_HASH"] = "dummy_hash"
-
-# Import from backend.utils where validate_id is defined
-from backend.utils import validate_id, log_and_format_error
-
-# Define ValidationError if it's expected to be importable or handle exceptions
-# Since validate_id likely returns error strings or raises exceptions, we need to check implementation.
-# If ValidationError is not exported by utils, we might need to see how errors are handled.
-# Based on usage in tools, it seems it wraps functions and returns error messages on failure.
 
 
 @validate_id("user_id", "chat_id", "user_ids")

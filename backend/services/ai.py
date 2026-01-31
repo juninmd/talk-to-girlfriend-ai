@@ -7,7 +7,7 @@ import google.generativeai as genai
 from typing import List, Dict, Any
 from sqlmodel import Session, select
 from backend.database import engine, Message, Fact
-from backend.config import GOOGLE_API_KEY, AI_CONTEXT_FACT_LIMIT
+from backend.settings import settings
 from backend.prompts import (
     FACT_EXTRACTION_PROMPT,
     SUMMARY_PROMPT,
@@ -18,14 +18,14 @@ from backend.utils import async_retry
 logger = logging.getLogger(__name__)
 
 # Configure Gemini
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
+if settings.GOOGLE_API_KEY:
+    genai.configure(api_key=settings.GOOGLE_API_KEY)
 
 
 class AIService:
     def __init__(self):
         self.model = None
-        if GOOGLE_API_KEY:
+        if settings.GOOGLE_API_KEY:
             # Using Gemini 1.5 Flash for better performance and cost-efficiency
             self.model = genai.GenerativeModel("gemini-1.5-flash")
         else:
@@ -45,8 +45,7 @@ class AIService:
         try:
             # Request JSON output directly
             response = await self.model.generate_content_async(
-                prompt,
-                generation_config={"response_mime_type": "application/json"}
+                prompt, generation_config={"response_mime_type": "application/json"}
             )
             raw_text = response.text.strip()
 
@@ -56,7 +55,7 @@ class AIService:
 
             # Use regex to find the JSON list structure [ ... ]
             # This handles any conversational preamble
-            match = re.search(r'\[.*\]', raw_text, re.DOTALL)
+            match = re.search(r"\[.*\]", raw_text, re.DOTALL)
             if match:
                 raw_text = match.group(0)
 
@@ -65,7 +64,9 @@ class AIService:
                 return facts
             return []
         except Exception as e:
-            logger.error(f"Error extracting facts: {e}. Raw text: {response.text if 'response' in locals() else 'N/A'}")
+            logger.error(
+                f"Error extracting facts: {e}. Raw text: {response.text if 'response' in locals() else 'N/A'}"
+            )
             # Re-raise to trigger retry
             raise e
 
@@ -84,15 +85,22 @@ class AIService:
 
         if isinstance(data, list) and all(isinstance(m, Message) for m in data):
             # Flat list
-            text_log = "\n".join([f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}" for m in data])
+            text_log = "\n".join(
+                [
+                    f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}"
+                    for m in data
+                ]
+            )
         elif isinstance(data, dict):
             # Grouped dict
             chunks = []
             for chat_name, msgs in data.items():
                 chunks.append(f"--- Chat: {chat_name} ---")
                 for m in msgs:
-                    chunks.append(f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}")
-                chunks.append("") # Empty line
+                    chunks.append(
+                        f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}"
+                    )
+                chunks.append("")  # Empty line
             text_log = "\n".join(chunks)
         else:
             return "Formato de dados inválido para resumo."
@@ -124,7 +132,7 @@ class AIService:
                 select(Fact)
                 .where(Fact.chat_id == chat_id)
                 .order_by(Fact.created_at.desc())
-                .limit(AI_CONTEXT_FACT_LIMIT)
+                .limit(settings.AI_CONTEXT_FACT_LIMIT)
             ).all()
             return history, facts
 
@@ -142,14 +150,16 @@ class AIService:
         elif diff.days == 1:
             day_str = "Ontem"
         elif diff.days < 7:
-            day_str = dt.strftime("%A") # Day name
+            day_str = dt.strftime("%A")  # Day name
         else:
             day_str = dt.strftime("%d/%m")
 
         return f"{day_str} {dt.strftime('%H:%M')}"
 
     @async_retry(max_attempts=2, delay=0.5)
-    async def generate_natural_response(self, chat_id: int, user_message: str, sender_name: str = "User") -> str:
+    async def generate_natural_response(
+        self, chat_id: int, user_message: str, sender_name: str = "User"
+    ) -> str:
         """
         Generates a natural response using history and facts.
         """

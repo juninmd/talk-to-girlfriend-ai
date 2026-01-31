@@ -1,19 +1,8 @@
-from typing import Union, Optional, List
-from mcp.server.fastmcp import FastMCP, Context
-from mcp.types import ToolAnnotations
-from telethon import functions, utils
+from typing import Union, List
+from telethon import functions
 from telethon.tl.types import User, Chat, Channel
 from backend.client import client
-from backend.utils import log_and_format_error, validate_id, get_sender_name, format_entity
-
-# We can't use @mcp.tool directly here if we want to separate files easily without passing `mcp` object everywhere.
-# Instead, we'll define standard async functions and register them in server.py.
-# Or we can create a list of tools and register them.
-# The best way for modular FastMCP is using decorators on a FastMCP instance, but we can also use `mcp.add_tool`.
-# For now, I will define them as regular async functions and use `mcp.tool()` decorator in server.py by importing them.
-# Wait, FastMCP decorators need the function. I can decorate them in `server.py` or use a helper.
-
-# Strategy: Define functions here. Import them in server.py and apply @mcp.tool().
+from backend.utils import log_and_format_error, validate_id
 
 
 async def get_chats(page: int = 1, page_size: int = 20) -> str:
@@ -96,7 +85,7 @@ async def list_chats(chat_type: str = None, limit: int = 20) -> str:
             results.append(chat_info)
 
         if not results:
-            return f"No chats found matching the criteria."
+            return "No chats found matching the criteria."
         return "\n".join(results)
     except Exception as e:
         return log_and_format_error("list_chats", e, chat_type=chat_type, limit=limit)
@@ -139,7 +128,7 @@ async def get_chat(chat_id: Union[int, str]) -> str:
             if entity.last_name:
                 name += f" {entity.last_name}"
             result.append(f"Name: {name}")
-            result.append(f"Type: User")
+            result.append("Type: User")
             if entity.username:
                 result.append(f"Username: @{entity.username}")
             if entity.phone:
@@ -205,12 +194,12 @@ async def get_invite_link(chat_id: Union[int, str]) -> str:
         try:
             result = await client(functions.messages.ExportChatInviteRequest(peer=entity))
             return result.link
-        except:
+        except Exception:
             pass
         try:
             invite_link = await client.export_chat_invite_link(entity)
             return invite_link
-        except:
+        except Exception:
             pass
         return "Could not retrieve invite link."
     except Exception as e:
@@ -241,7 +230,7 @@ async def create_group(title: str, user_ids: List[Union[int, str]]) -> str:
         for user_id in user_ids:
             try:
                 users.append(await client.get_entity(user_id))
-            except:
+            except Exception:
                 pass
         if not users:
             return "Error: No valid users provided"

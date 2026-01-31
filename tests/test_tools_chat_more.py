@@ -3,18 +3,21 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.tools import chat
 
+
 @pytest.fixture
 def mock_client():
     with patch("backend.tools.chat.client") as mock:
         yield mock
 
+
 @pytest.mark.asyncio
 async def test_mute_chat(mock_client):
     mock_client.get_input_entity = AsyncMock(return_value="peer")
-    mock_client.side_effect = AsyncMock() # client()
+    mock_client.side_effect = AsyncMock()  # client()
 
     res = await chat.mute_chat(123)
     assert "muted" in res
+
 
 @pytest.mark.asyncio
 async def test_unmute_chat(mock_client):
@@ -24,6 +27,7 @@ async def test_unmute_chat(mock_client):
     res = await chat.unmute_chat(123)
     assert "unmuted" in res
 
+
 @pytest.mark.asyncio
 async def test_archive_chat(mock_client):
     mock_client.get_entity = AsyncMock(return_value="peer")
@@ -32,6 +36,7 @@ async def test_archive_chat(mock_client):
     res = await chat.archive_chat(123)
     assert "archived" in res
 
+
 @pytest.mark.asyncio
 async def test_unarchive_chat(mock_client):
     mock_client.get_entity = AsyncMock(return_value="peer")
@@ -39,6 +44,7 @@ async def test_unarchive_chat(mock_client):
 
     res = await chat.unarchive_chat(123)
     assert "unarchived" in res
+
 
 @pytest.mark.asyncio
 async def test_edit_chat_title(mock_client):
@@ -62,9 +68,11 @@ async def test_edit_chat_title(mock_client):
     res = await chat.edit_chat_title(123, "New Title")
     assert "Cannot edit title" in res
 
+
 @pytest.mark.asyncio
 async def test_edit_chat_photo(mock_client):
     from telethon.tl.types import Chat
+
     c = MagicMock(spec=Chat)
     mock_client.get_entity = AsyncMock(return_value=c)
     mock_client.upload_file = AsyncMock(return_value="file")
@@ -73,15 +81,18 @@ async def test_edit_chat_photo(mock_client):
     res = await chat.edit_chat_photo(123, "photo.jpg")
     assert "updated" in res
 
+
 @pytest.mark.asyncio
 async def test_delete_chat_photo(mock_client):
     from telethon.tl.types import Channel
+
     c = MagicMock(spec=Channel)
     mock_client.get_entity = AsyncMock(return_value=c)
     mock_client.side_effect = AsyncMock()
 
     res = await chat.delete_chat_photo(123)
     assert "deleted" in res
+
 
 @pytest.mark.asyncio
 async def test_get_invite_link(mock_client):
@@ -96,6 +107,7 @@ async def test_get_invite_link(mock_client):
 
     res = await chat.get_invite_link(123)
     assert "https://t.me/invite" in res
+
 
 @pytest.mark.asyncio
 async def test_join_chat_by_link(mock_client):

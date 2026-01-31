@@ -3,31 +3,38 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.services.reporting import ReportingService
 
+
 @pytest.fixture
 def mock_session():
     with patch("backend.services.reporting.Session") as mock:
         yield mock
+
 
 @pytest.fixture
 def mock_client():
     with patch("backend.services.reporting.client") as mock:
         yield mock
 
+
 @pytest.fixture
 def mock_ai_service():
     with patch("backend.services.reporting.ai_service") as mock:
         yield mock
 
+
 @pytest.mark.asyncio
 async def test_generate_daily_report_no_messages(mock_session, mock_client):
     # Mock empty messages
-    with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
-        mock_thread.return_value = []
+    with patch("backend.services.reporting.settings") as mock_settings:
+        mock_settings.REPORT_CHANNEL_ID = 123
+        with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
+            mock_thread.return_value = []
 
-        service = ReportingService()
-        await service.generate_daily_report()
+            service = ReportingService()
+            await service.generate_daily_report()
 
-        mock_client.send_message.assert_not_called()
+            mock_client.send_message.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_generate_daily_report_with_messages(mock_session, mock_client, mock_ai_service):
@@ -40,7 +47,8 @@ async def test_generate_daily_report_with_messages(mock_session, mock_client, mo
 
         mock_ai_service.summarize_conversations = AsyncMock(return_value="Summary")
 
-        with patch("backend.services.reporting.REPORT_CHANNEL_ID", -100):
+        with patch("backend.services.reporting.settings") as mock_settings:
+            mock_settings.REPORT_CHANNEL_ID = -100
             mock_client.get_entity = AsyncMock(return_value="channel")
             mock_client.send_message = AsyncMock()
 
@@ -52,6 +60,7 @@ async def test_generate_daily_report_with_messages(mock_session, mock_client, mo
             assert "Summary" in args[1]
             assert "Estatísticas" in args[1]
 
+
 @pytest.mark.asyncio
 async def test_generate_daily_report_no_channel_id(mock_session, mock_client, mock_ai_service):
     mock_msg = MagicMock()
@@ -59,7 +68,8 @@ async def test_generate_daily_report_no_channel_id(mock_session, mock_client, mo
         mock_thread.return_value = [mock_msg]
         mock_ai_service.summarize_conversations = AsyncMock(return_value="Summary")
 
-        with patch("backend.services.reporting.REPORT_CHANNEL_ID", None):
+        with patch("backend.services.reporting.settings") as mock_settings:
+            mock_settings.REPORT_CHANNEL_ID = None
             service = ReportingService()
             await service.generate_daily_report()
             mock_client.send_message.assert_not_called()

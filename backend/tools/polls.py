@@ -27,7 +27,7 @@ async def create_poll(
             try:
                 close_date_obj = datetime.fromisoformat(close_date.replace("Z", "+00:00"))
             except ValueError:
-                return f"Invalid close_date format. Use YYYY-MM-DD HH:MM:SS format."
+                return "Invalid close_date format. Use YYYY-MM-DD HH:MM:SS format."
 
         poll = Poll(
             id=random.randint(0, 2**63 - 1),

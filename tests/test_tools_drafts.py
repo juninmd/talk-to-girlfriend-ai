@@ -3,18 +3,21 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.tools import drafts
 
+
 @pytest.fixture
 def mock_client():
     with patch("backend.tools.drafts.client") as mock:
         yield mock
 
+
 @pytest.mark.asyncio
 async def test_save_draft(mock_client):
     mock_client.get_input_entity = AsyncMock(return_value="peer")
-    mock_client.side_effect = AsyncMock() # for client call
+    mock_client.side_effect = AsyncMock()  # for client call
 
     result = await drafts.save_draft(chat_id=123, message="Draft")
     assert "Draft saved" in result
+
 
 @pytest.mark.asyncio
 async def test_get_drafts(mock_client):
@@ -32,6 +35,7 @@ async def test_get_drafts(mock_client):
     result = await drafts.get_drafts()
     assert "Draft Message" in result
     assert "123" in result
+
 
 @pytest.mark.asyncio
 async def test_clear_draft(mock_client):

@@ -3,10 +3,12 @@ from unittest.mock import MagicMock, AsyncMock, patch
 
 from backend.tools import chat
 
+
 @pytest.fixture
 def mock_client():
     with patch("backend.tools.chat.client") as mock:
         yield mock
+
 
 @pytest.mark.asyncio
 async def test_list_chats_extended(mock_client):
@@ -75,6 +77,7 @@ async def test_list_chats_extended(mock_client):
     assert "Channel1" in res
     assert "Group1" not in res
 
+
 @pytest.mark.asyncio
 async def test_get_chat_extended(mock_client):
     from telethon.tl.types import User, Chat, Channel
@@ -117,9 +120,10 @@ async def test_get_chat_extended(mock_client):
     assert "Bot: Yes" in res
     assert "Verified: Yes" in res
 
+
 @pytest.mark.asyncio
 async def test_leave_chat_extended(mock_client):
-    from telethon.tl.types import User, Chat, Channel
+    from telethon.tl.types import User, Chat
 
     # Leave basic chat
     c = MagicMock(spec=Chat)
@@ -127,7 +131,7 @@ async def test_leave_chat_extended(mock_client):
     c.title = "Basic"
     mock_client.get_entity = AsyncMock(return_value=c)
     mock_client.get_me = AsyncMock(return_value=MagicMock(id=99))
-    mock_client.side_effect = AsyncMock() # client() calls
+    mock_client.side_effect = AsyncMock()  # client() calls
 
     res = await chat.leave_chat(chat_id=1)
     assert "Left basic group" in res
@@ -139,6 +143,7 @@ async def test_leave_chat_extended(mock_client):
 
     res = await chat.leave_chat(chat_id=2)
     assert "An error occurred" in res
+
 
 @pytest.mark.asyncio
 async def test_chat_exceptions(mock_client):
