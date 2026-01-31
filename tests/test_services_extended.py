@@ -95,6 +95,7 @@ async def test_reporting_service_grouping_logic():
 
         # We need to patch the global 'client' used in reporting.py, not an instance attr
         with patch("backend.services.reporting.client", mock_client):
+            service.client = mock_client
             mock_client.get_entity.side_effect = get_entity_side_effect
 
             with patch("backend.services.reporting.ai_service", mock_ai_service):

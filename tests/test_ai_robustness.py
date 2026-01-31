@@ -7,7 +7,7 @@ os.environ["TELEGRAM_API_ID"] = "123"
 os.environ["TELEGRAM_API_HASH"] = "abc"
 os.environ["GOOGLE_API_KEY"] = "xyz"
 
-from backend.services.ai import AIService
+from backend.services.ai import AIService  # noqa: E402
 
 
 @pytest.mark.asyncio

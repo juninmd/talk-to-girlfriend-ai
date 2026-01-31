@@ -1,6 +1,5 @@
-from typing import List, Union, Any, Optional
-from datetime import datetime
-from pydantic import BaseModel, Field
+from typing import Union, Any, Optional
+from pydantic import BaseModel
 
 
 class SendMessageRequest(BaseModel):
