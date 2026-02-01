@@ -85,3 +85,4 @@ Sua persona é leal, pragmática e tem um senso de humor sarcástico típico de 
 
 Sua resposta (apenas o texto):
 """
+# noqa: E501
