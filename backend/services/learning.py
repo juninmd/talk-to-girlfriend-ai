@@ -76,9 +76,16 @@ class LearningService:
                     count += 1
 
             # Trigger learning on extracted messages
-            # Filter relevant messages (incoming, text only, substantial length)
+            # Filter relevant messages (text only, substantial length, not reports)
             relevant_msgs = [
-                m for m in messages_list if not m.out and m.message and len(m.message) > 5
+                m
+                for m in messages_list
+                if m.message
+                and len(m.message) > 5
+                and not (
+                    m.message.startswith("# 📅 Relatório Diário")
+                    or m.message.startswith("# 📅 Relatório")
+                )
             ]
 
             # Analyze in batches to avoid overwhelming the API
@@ -193,8 +200,14 @@ class LearningService:
             db_message_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
 
             # 2. Asynchronously extract facts (Learning)
-            # Only learn from non-trivial INCOMING messages (avoid learning from self)
-            if not is_outgoing and text and len(text) > 10 and db_message_id:
+            # Learn from both incoming and outgoing, but filter out Reports and trivial messages
+            if text and len(text) > 10 and db_message_id:
+                # Avoid learning from our own generated reports
+                if text.startswith("# 📅 Relatório Diário") or text.startswith(
+                    "# 📅 Relatório"
+                ):
+                    return
+
                 asyncio.create_task(self._analyze_and_extract(text, db_message_id, chat_id))
 
         except Exception as e:
