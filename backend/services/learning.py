@@ -20,85 +20,20 @@ class LearningService:
         """Fetches past messages and saves them to DB. Learns from recent ones."""
         logger.info(f"Starting history ingestion for chat {chat_id}, limit={limit}...")
         try:
-            # Determine the last synced message ID to avoid duplicates
-            min_id = 0
-            with Session(engine) as session:
-                statement = select(func.max(Message.telegram_message_id)).where(
-                    Message.chat_id == chat_id
-                )
-                result = session.exec(statement).first()
-                if result:
-                    min_id = result
-                    logger.info(
-                        f"Found existing history for chat {chat_id}. Resuming from ID {min_id}."
-                    )
+            min_id = self._get_last_synced_id(chat_id)
 
             # We need to resolve the entity first
             entity = await self.client.get_entity(chat_id)
 
             # Fetch messages strictly newer than min_id
-            # Note: Telethon get_messages with min_id fetches messages with ID > min_id
             messages = await self.client.get_messages(entity, limit=limit, min_id=min_id)
-
-            # Convert to list to iterate
             messages_list = list(messages)
-            count = 0
 
-            # Process oldest first for logical order in DB
-            for msg in reversed(messages_list):
-                if not msg.message:
-                    continue
-
-                sender_name = "Unknown"
-                if msg.sender:
-                    if hasattr(msg.sender, "first_name"):
-                        sender_name = (
-                            f"{msg.sender.first_name} {msg.sender.last_name or ''}".strip()
-                        )
-                    elif hasattr(msg.sender, "title"):
-                        sender_name = msg.sender.title
-
-                if not sender_name:
-                    sender_name = str(msg.sender_id)
-
-                msg_data = {
-                    "telegram_message_id": msg.id,
-                    "chat_id": chat_id,
-                    "sender_id": msg.sender_id,
-                    "sender_name": sender_name,
-                    "text": msg.message,
-                    "date": msg.date,
-                    "is_outgoing": msg.out,
-                }
-
-                db_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
-                if db_id:
-                    count += 1
+            count = await self._process_messages_ingestion(chat_id, messages_list)
 
             # Trigger learning on extracted messages
-            # Filter relevant messages (incoming, text only, substantial length)
-            relevant_msgs = [
-                m for m in messages_list if not m.out and m.message and len(m.message) > 5
-            ]
-
-            # Analyze in batches to avoid overwhelming the API
-            batch_size = settings.LEARNING_BATCH_SIZE
-            total_batches = (len(relevant_msgs) + batch_size - 1) // batch_size
-
-            for i in range(0, len(relevant_msgs), batch_size):
-                batch_num = (i // batch_size) + 1
-                logger.info(
-                    f"Processing learning batch {batch_num}/{total_batches} for chat {chat_id}..."
-                )
-
-                batch = relevant_msgs[i : i + batch_size]
-                tasks = []
-                for m in batch:
-                    tasks.append(self._analyze_and_extract_safe(m.message, m.id, chat_id))
-
-                # Run batch and wait a bit
-                await asyncio.gather(*tasks)
-                await asyncio.sleep(settings.LEARNING_DELAY)  # Rate limit protection
+            relevant_msgs = self._filter_relevant_messages(messages_list)
+            await self._process_learning_batch(chat_id, relevant_msgs)
 
             logger.info(
                 f"Ingested {count} messages for chat {chat_id}. Analyzed {len(relevant_msgs)} for facts."
@@ -107,6 +42,86 @@ class LearningService:
         except Exception as e:
             logger.error(f"Error ingesting history: {e}")
             return 0
+
+    def _get_last_synced_id(self, chat_id: int) -> int:
+        with Session(engine) as session:
+            statement = select(func.max(Message.telegram_message_id)).where(
+                Message.chat_id == chat_id
+            )
+            result = session.exec(statement).first()
+            if result:
+                logger.info(
+                    f"Found existing history for chat {chat_id}. Resuming from ID {result}."
+                )
+                return result
+        return 0
+
+    async def _process_messages_ingestion(self, chat_id, messages_list):
+        count = 0
+        # Process oldest first for logical order in DB
+        for msg in reversed(messages_list):
+            if not msg.message:
+                continue
+
+            sender_name = self._resolve_sender_name(msg)
+            msg_data = {
+                "telegram_message_id": msg.id,
+                "chat_id": chat_id,
+                "sender_id": msg.sender_id,
+                "sender_name": sender_name,
+                "text": msg.message,
+                "date": msg.date,
+                "is_outgoing": msg.out,
+            }
+
+            db_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
+            if db_id:
+                count += 1
+        return count
+
+    def _resolve_sender_name(self, msg):
+        sender_name = "Unknown"
+        if msg.sender:
+            if hasattr(msg.sender, "first_name"):
+                sender_name = f"{msg.sender.first_name} {msg.sender.last_name or ''}".strip()
+            elif hasattr(msg.sender, "title"):
+                sender_name = msg.sender.title
+
+        if not sender_name:
+            sender_name = str(msg.sender_id)
+        return sender_name
+
+    def _filter_relevant_messages(self, messages_list):
+        return [
+            m
+            for m in messages_list
+            if m.message
+            and len(m.message) > 5
+            and not (
+                m.message.startswith("# 📅 Relatório Diário")
+                or m.message.startswith("# 📅 Relatório")
+            )
+        ]
+
+    async def _process_learning_batch(self, chat_id, relevant_msgs):
+        # Analyze in batches to avoid overwhelming the API
+        batch_size = settings.LEARNING_BATCH_SIZE
+        total_batches = (len(relevant_msgs) + batch_size - 1) // batch_size
+
+        for i in range(0, len(relevant_msgs), batch_size):
+            batch_num = (i // batch_size) + 1
+            logger.info(
+                f"Processing learning batch {batch_num}/{total_batches} for chat {chat_id}..."
+            )
+
+            batch = relevant_msgs[i : i + batch_size]
+            tasks = []
+            for m in batch:
+                tasks.append(self._analyze_and_extract_safe(m.message, m.id, chat_id))
+
+            # Run batch and wait a bit
+            await asyncio.gather(*tasks)
+            await asyncio.sleep(settings.LEARNING_DELAY)
 
     async def start_listening(self):
         """Registers event handlers for incoming messages."""
@@ -193,8 +208,12 @@ class LearningService:
             db_message_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
 
             # 2. Asynchronously extract facts (Learning)
-            # Only learn from non-trivial INCOMING messages (avoid learning from self)
-            if not is_outgoing and text and len(text) > 10 and db_message_id:
+            # Learn from both incoming and outgoing, but filter out Reports
+            if text and len(text) > 10 and db_message_id:
+                # Avoid learning from our own generated reports
+                if text.startswith("# 📅 Relatório Diário") or text.startswith("# 📅 Relatório"):
+                    return
+
                 asyncio.create_task(self._analyze_and_extract(text, db_message_id, chat_id))
 
         except Exception as e:
