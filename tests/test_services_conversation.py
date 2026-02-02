@@ -25,6 +25,7 @@ async def test_handle_incoming_message_trigger(service):
     event.sender = MagicMock(spec=User)
     event.sender.bot = False
     event.sender.first_name = "TestUser"
+    event.message.sender = event.sender
     event.chat_id = 123
 
     # We patch the method on the instance `service`

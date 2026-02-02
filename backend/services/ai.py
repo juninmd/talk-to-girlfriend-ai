@@ -63,6 +63,9 @@ class AIService:
             if isinstance(facts, list):
                 return facts
             return []
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON Decode Error in extract_facts: {e}. Raw text: {raw_text}")
+            return []
         except Exception as e:
             logger.error(
                 f"Error extracting facts: {e}. Raw text: {response.text if 'response' in locals() else 'N/A'}"

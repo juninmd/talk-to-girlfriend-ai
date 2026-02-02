@@ -6,7 +6,7 @@ from backend.database import engine, Message
 from backend.services.ai import ai_service
 from backend.client import client
 from backend.settings import settings
-from backend.utils import async_retry
+from backend.utils import async_retry, format_entity
 
 logger = logging.getLogger(__name__)
 
@@ -105,10 +105,8 @@ class ReportingService:
             title = f"Chat {chat_id}"
             try:
                 entity = await self.client.get_entity(chat_id)
-                if hasattr(entity, "title"):
-                    title = entity.title
-                elif hasattr(entity, "first_name"):
-                    title = f"{entity.first_name} {entity.last_name or ''}".strip()
+                formatted = format_entity(entity)
+                title = formatted.get("name", title)
             except Exception:
                 pass
 

@@ -4,6 +4,7 @@ from telethon.tl.types import User
 from backend.client import client
 from backend.services.ai import ai_service
 from backend.settings import settings
+from backend.utils import get_sender_name
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +30,7 @@ class ConversationService:
             chat_id = event.chat_id
 
             # Determine sender name
-            sender_name = "User"
-            if event.sender:
-                if isinstance(event.sender, User):
-                    sender_name = event.sender.first_name or "User"
-                elif hasattr(event.sender, "title"):
-                    sender_name = event.sender.title
+            sender_name = get_sender_name(event.message)
 
             # Trigger reply
             asyncio.create_task(self._generate_and_send_reply(chat_id, text, sender_name))
