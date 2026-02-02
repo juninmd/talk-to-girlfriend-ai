@@ -7,6 +7,7 @@ from backend.client import client
 from backend.database import engine, Message, Fact
 from backend.services.ai import ai_service
 from backend.settings import settings
+from backend.utils import get_sender_name
 import logging
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,10 @@ class LearningService:
             if not msg.message:
                 continue
 
-            sender_name = self._resolve_sender_name(msg)
+            sender_name = get_sender_name(msg)
+            if sender_name == "Unknown":
+                sender_name = str(msg.sender_id)
+
             msg_data = {
                 "telegram_message_id": msg.id,
                 "chat_id": chat_id,
@@ -78,18 +82,6 @@ class LearningService:
             if db_id:
                 count += 1
         return count
-
-    def _resolve_sender_name(self, msg):
-        sender_name = "Unknown"
-        if msg.sender:
-            if hasattr(msg.sender, "first_name"):
-                sender_name = f"{msg.sender.first_name} {msg.sender.last_name or ''}".strip()
-            elif hasattr(msg.sender, "title"):
-                sender_name = msg.sender.title
-
-        if not sender_name:
-            sender_name = str(msg.sender_id)
-        return sender_name
 
     def _filter_relevant_messages(self, messages_list):
         return [
@@ -181,17 +173,8 @@ class LearningService:
             date = event.message.date or datetime.now(timezone.utc)
             is_outgoing = event.message.out
 
-            sender_name = "Unknown"
-            if event.sender:
-                if isinstance(event.sender, User):
-                    sender_name = (
-                        f"{event.sender.first_name} {event.sender.last_name or ''}".strip()
-                    )
-                elif hasattr(event.sender, "title"):
-                    sender_name = event.sender.title
-
-            # Use User ID if name is empty
-            if not sender_name:
+            sender_name = get_sender_name(event.message)
+            if sender_name == "Unknown":
                 sender_name = str(sender_id)
 
             msg_data = {
