@@ -12,6 +12,12 @@ O projeto combina um **Backend Python** robusto (FastAPI, Telethon, Google Gemin
 *   **Integração Completa:** Funciona como um cliente de Telegram real (Userbot) capaz de ler e enviar mensagens, reagir e gerenciar chats.
 *   **Servidor MCP (Model Context Protocol):** Expõe funcionalidades do Telegram para ferramentas compatíveis com MCP (como Claude Desktop ou Cursor).
 
+## Atualizações 2026
+
+*   **Backend Otimizado:** Refatorado para Python 3.12+ com suporte a tipagem estrita e linting rigoroso.
+*   **IA Aprimorada:** Migração completa para modelos Gemini mais recentes (1.5 Flash) para melhor contexto e velocidade.
+*   **Segurança:** Implementação de checks automáticos em CI/CD para garantir qualidade de código e segurança.
+
 ## Arquitetura
 
 O núcleo do sistema é um backend Python modular:
