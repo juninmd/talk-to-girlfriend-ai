@@ -16,6 +16,15 @@ logger = logging.getLogger(__name__)
 class LearningService:
     def __init__(self):
         self.client = client
+        self._me = None
+
+    async def _get_me(self):
+        if not self._me:
+            try:
+                self._me = await self.client.get_me()
+            except Exception:
+                pass
+        return self._me
 
     async def ingest_history(self, chat_id: int, limit: int = 100):
         """Fetches past messages and saves them to DB. Learns from recent ones."""
@@ -194,7 +203,14 @@ class LearningService:
             # Learn from both incoming and outgoing, but filter out Reports
             if text and len(text) > 10 and db_message_id:
                 # Avoid learning from our own generated reports
-                if text.startswith("# 📅 Relatório Diário") or text.startswith("# 📅 Relatório"):
+                if text.startswith("# 📅 Relatório Diário") or text.startswith(
+                    "# 📅 Relatório"
+                ):
+                    return
+
+                # If we are a bot, never learn from our own outgoing messages
+                me = await self._get_me()
+                if me and me.bot and is_outgoing:
                     return
 
                 asyncio.create_task(self._analyze_and_extract(text, db_message_id, chat_id))
