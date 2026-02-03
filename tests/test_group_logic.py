@@ -1,8 +1,8 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from backend.services.conversation import conversation_service
-from telethon import events
 from telethon.tl.types import User
+
 
 @pytest.mark.asyncio
 async def test_handle_private_message():
@@ -24,9 +24,10 @@ async def test_handle_private_message():
         conversation_service._generate_and_send_reply.assert_called_once()
         # Verify reply_to_msg_id is None for private
         _, kwargs = conversation_service._generate_and_send_reply.call_args
-        assert kwargs.get('reply_to_msg_id') is None
+        assert kwargs.get("reply_to_msg_id") is None
     finally:
         conversation_service._generate_and_send_reply = original_method
+
 
 @pytest.mark.asyncio
 async def test_handle_group_message_no_mention():
@@ -46,6 +47,7 @@ async def test_handle_group_message_no_mention():
         conversation_service._generate_and_send_reply.assert_not_called()
     finally:
         conversation_service._generate_and_send_reply = original_method
+
 
 @pytest.mark.asyncio
 async def test_handle_group_message_with_mention():
@@ -67,6 +69,6 @@ async def test_handle_group_message_with_mention():
         conversation_service._generate_and_send_reply.assert_called_once()
         # Verify reply_to_msg_id is the message id for group
         _, kwargs = conversation_service._generate_and_send_reply.call_args
-        assert kwargs.get('reply_to_msg_id') == 555
+        assert kwargs.get("reply_to_msg_id") == 555
     finally:
         conversation_service._generate_and_send_reply = original_method

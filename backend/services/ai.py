@@ -66,12 +66,7 @@ class AIService:
             valid_facts = []
             if isinstance(facts, list):
                 for f in facts:
-                    if (
-                        isinstance(f, dict)
-                        and "entity" in f
-                        and "value" in f
-                        and "category" in f
-                    ):
+                    if isinstance(f, dict) and "entity" in f and "value" in f and "category" in f:
                         valid_facts.append(f)
             return valid_facts
         except json.JSONDecodeError as e:

@@ -1,6 +1,5 @@
 import asyncio
 from telethon import events
-from telethon.tl.types import User
 from sqlmodel import Session, select, func
 from datetime import datetime, timezone
 from backend.client import client
@@ -203,9 +202,7 @@ class LearningService:
             # Learn from both incoming and outgoing, but filter out Reports
             if text and len(text) > 10 and db_message_id:
                 # Avoid learning from our own generated reports
-                if text.startswith("# 📅 Relatório Diário") or text.startswith(
-                    "# 📅 Relatório"
-                ):
+                if text.startswith("# 📅 Relatório Diário") or text.startswith("# 📅 Relatório"):
                     return
 
                 # If we are a bot, never learn from our own outgoing messages
