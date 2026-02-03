@@ -5,9 +5,9 @@ Este documento descreve as práticas recomendadas e a implementação do Google 
 ## 1. Configuração e Modelos
 
 ### Modelo Utilizado (Atualizado 2026)
-O projeto migrou para o modelo **`gemini-1.5-flash`** através da biblioteca `google-generativeai`, visando maior performance e janela de contexto estendida.
+O projeto migrou para o modelo **`gemini-3-flash-preview`** através da biblioteca `google-generativeai`, visando maior performance e janela de contexto estendida.
 
-*   **Por que `gemini-1.5-flash`?** É otimizado para latência ultra-baixa e eficiência de custo, ideal para chatbots em tempo real.
+*   **Por que `gemini-3-flash-preview`?** É o nosso modelo mais equilibrado, criado para velocidade, escala e inteligência de ponta.
 *   **Instanciação:** O modelo é instanciado apenas se a `GOOGLE_API_KEY` estiver presente, com `fallback` gracioso.
 
 ### Gerenciamento de Chaves
