@@ -31,7 +31,7 @@ async def test_ai_service_extract_facts_with_markdown():
     # Mock the model with markdown code blocks
     mock_model = AsyncMock()
     mock_response = MagicMock()
-    mock_response.text = '```json\n[{"entity": "Test", "value": "Value"}]\n```'
+    mock_response.text = '```json\n[{"entity": "Test", "value": "Value", "category": "test"}]\n```'
     mock_model.generate_content_async.return_value = mock_response
 
     original_model = ai_service.model

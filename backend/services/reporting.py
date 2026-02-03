@@ -35,6 +35,7 @@ class ReportingService:
         if settings.REPORT_CHANNEL_ID:
             try:
                 target_entity = await self.client.get_entity(settings.REPORT_CHANNEL_ID)
+                logger.info(f"Resolved REPORT_CHANNEL_ID to {target_entity.id}")
             except Exception as e:
                 logger.warning(
                     f"Could not resolve configured REPORT_CHANNEL_ID ({settings.REPORT_CHANNEL_ID}): {e}"

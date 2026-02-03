@@ -26,8 +26,8 @@ class AIService:
     def __init__(self):
         self.model = None
         if settings.GOOGLE_API_KEY:
-            # Using Gemini 1.5 Flash for better performance and cost-efficiency
-            self.model = genai.GenerativeModel("gemini-1.5-flash")
+            # Using Gemini 3 Flash Preview for better performance and cost-efficiency
+            self.model = genai.GenerativeModel("gemini-3-flash-preview")
         else:
             logger.warning("GOOGLE_API_KEY not set. AI features disabled.")
 
@@ -49,20 +49,26 @@ class AIService:
             )
             raw_text = response.text.strip()
 
-            # Pre-cleaning: remove markdown code blocks
-            # This helps if the model wraps output in ```json ... ``` even with mime_type set
-            raw_text = raw_text.replace("```json", "").replace("```", "")
-
-            # Use regex to find the JSON list structure [ ... ]
-            # This handles any conversational preamble
-            match = re.search(r"\[.*\]", raw_text, re.DOTALL)
+            # 1. Try to extract from code block first
+            code_block_pattern = r"```(?:json)?\s*(.*?)```"
+            match = re.search(code_block_pattern, raw_text, re.DOTALL)
             if match:
-                raw_text = match.group(0)
+                raw_text = match.group(1).strip()
+
+            # 2. Ensure we have the list structure [ ... ]
+            # This handles cases where text is outside the block or no block exists
+            match_array = re.search(r"\[.*\]", raw_text, re.DOTALL)
+            if match_array:
+                raw_text = match_array.group(0)
 
             facts = json.loads(raw_text)
+
+            valid_facts = []
             if isinstance(facts, list):
-                return facts
-            return []
+                for f in facts:
+                    if isinstance(f, dict) and "entity" in f and "value" in f and "category" in f:
+                        valid_facts.append(f)
+            return valid_facts
         except json.JSONDecodeError as e:
             logger.error(f"JSON Decode Error in extract_facts: {e}. Raw text: {raw_text}")
             return []

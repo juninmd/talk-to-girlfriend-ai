@@ -21,8 +21,8 @@ Este é o arquivo que você deve executar para que o agente (CLI) funcione. Ele 
     *   Exemplo: Quando o agente quer enviar uma mensagem, ele faz uma requisição POST para `/chats/{chat_id}/messages`. O `telegram_api.py` recebe essa requisição e usa `client.send_message()` do Telethon para realmente enviar a mensagem no Telegram.
 *   **Gerenciamento de Sessão**: Usa `TELEGRAM_SESSION_STRING` do arquivo `.env` para autenticar sem precisar escanear QR code a cada vez.
 
-### `main.py`
-Este arquivo implementa um servidor **MCP (Model Context Protocol)**. Ele é uma alternativa ao uso via CLI.
+### `main.py` (Atualizado 2026)
+Este arquivo implementa um servidor **MCP (Model Context Protocol)** robusto e tipado.
 
 *   **MCP Server**: Permite que clientes MCP (como editores de código ou desktops de IA) se conectem diretamente ao seu Telegram.
 *   **Ferramentas (Tools)**: Define funções decoradas com `@mcp.tool` (ex: `get_chats`, `send_message`). Essas funções são expostas para o modelo de IA, que pode decidir chamá-las com base no pedido do usuário.

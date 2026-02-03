@@ -4,11 +4,11 @@ Este documento descreve as práticas recomendadas e a implementação do Google 
 
 ## 1. Configuração e Modelos
 
-### Modelo Utilizado
-Atualmente, o projeto utiliza o modelo **`gemini-pro`** através da biblioteca `google-generativeai`.
+### Modelo Utilizado (Atualizado 2026)
+O projeto migrou para o modelo **`gemini-3-flash-preview`** através da biblioteca `google-generativeai`, visando maior performance e janela de contexto estendida.
 
-*   **Por que `gemini-pro`?** Oferece um equilíbrio ideal entre custo, velocidade e capacidade de raciocínio para tarefas de conversação e extração de dados.
-*   **Instanciação:** O modelo é instanciado apenas se a `GOOGLE_API_KEY` estiver presente, evitando falhas na inicialização do serviço.
+*   **Por que `gemini-3-flash-preview`?** É o nosso modelo mais equilibrado, criado para velocidade, escala e inteligência de ponta.
+*   **Instanciação:** O modelo é instanciado apenas se a `GOOGLE_API_KEY` estiver presente, com `fallback` gracioso.
 
 ### Gerenciamento de Chaves
 A chave da API (`GOOGLE_API_KEY`) é carregada via variáveis de ambiente (`backend/config.py`). Nunca commite chaves hardcoded.

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     CONVERSATION_TYPING_SPEED: float = 0.05
 
     # Reporting
-    REPORT_CHANNEL_ID: Optional[int] = None
+    REPORT_CHANNEL_ID: Optional[Union[int, str]] = None
 
     # Learning
     LEARNING_BATCH_SIZE: int = 5
