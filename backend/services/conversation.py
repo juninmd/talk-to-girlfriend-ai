@@ -3,6 +3,8 @@ import logging
 from telethon.tl.types import User
 from backend.client import client
 from backend.services.ai import ai_service
+from backend.services.learning import learning_service
+from backend.services.reporting import reporting_service
 from backend.settings import settings
 from backend.utils import get_sender_name
 
@@ -36,6 +38,30 @@ class ConversationService:
             text = event.message.message
             chat_id = event.chat_id
             reply_to_msg_id = event.message.id if not event.is_private else None
+
+            # --- Command Handling ---
+            if text.strip().startswith("/aprender"):
+                parts = text.split()
+                limit = 50
+                if len(parts) > 1 and parts[1].isdigit():
+                    limit = int(parts[1])
+
+                # Feedback to user
+                await self.client.send_message(chat_id, f"🧠 Iniciando aprendizado das últimas {limit} mensagens...")
+
+                status_msg = await learning_service.ingest_history(chat_id, limit)
+                await self.client.send_message(chat_id, f"✅ {status_msg}")
+                return
+
+            if text.strip().startswith("/relatorio"):
+                 await self.client.send_message(chat_id, "📊 Gerando relatório para esta conversa...")
+                 report_text = await reporting_service.generate_daily_report(chat_id=chat_id)
+                 if report_text:
+                     await self.client.send_message(chat_id, report_text)
+                 else:
+                     await self.client.send_message(chat_id, "⚠️ Não foi possível gerar o relatório.")
+                 return
+            # ------------------------
 
             # Determine sender name
             sender_name = get_sender_name(event.message)

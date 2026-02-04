@@ -76,7 +76,7 @@ async def test_ingest_history_flow():
                 # Patching the method on the instance
                 service._analyze_and_extract_safe = MagicMock(side_effect=dummy_analyze)
 
-                count = await service.ingest_history(123, limit=5)
+                result_msg = await service.ingest_history(123, limit=5)
 
-                assert count == 1
+                assert "Ingested 1 messages" in result_msg
                 mock_client.get_messages.assert_called_with("dummy_entity", limit=5, min_id=0)
