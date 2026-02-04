@@ -32,7 +32,9 @@ class ReportingService:
         and sends it to the configured channel.
         Returns the report text.
         """
-        logger.info(f"Generating daily report (Specific Chat: {chat_id})...")
+        logger.info(
+            f"Generating daily report (Specific Chat: {chat_id})...",
+        )
 
         target_entity = None
         # If chat_id is specified (e.g. via command), we might want to send it there?
@@ -43,18 +45,21 @@ class ReportingService:
         # Let's resolve the target first just in case we need to send it.
         if settings.REPORT_CHANNEL_ID:
             try:
-                target_entity = await self.client.get_entity(settings.REPORT_CHANNEL_ID)
+                target_entity = await self.client.get_entity(
+                    settings.REPORT_CHANNEL_ID,
+                )
                 logger.info(f"Resolved REPORT_CHANNEL_ID to {target_entity.id}")
             except Exception as e:
                 logger.warning(
-                    f"Could not resolve configured REPORT_CHANNEL_ID ({settings.REPORT_CHANNEL_ID}): {e}"
+                    f"Could not resolve configured REPORT_CHANNEL_ID "
+                    f"({settings.REPORT_CHANNEL_ID}): {e}"
                 )
 
         # Fallback to 'me' (Saved Messages) if no channel is set or if resolution failed
         if not target_entity:
             try:
                 logger.info(
-                    "REPORT_CHANNEL_ID invalid or missing. Falling back to 'Saved Messages'."
+                    "REPORT_CHANNEL_ID invalid or missing. " "Falling back to 'Saved Messages'."
                 )
                 target_entity = await self.client.get_me()
             except Exception as e:
@@ -62,7 +67,10 @@ class ReportingService:
                 return
 
         # 1. Fetch messages from last 24h (Non-blocking)
-        messages = await asyncio.to_thread(self._fetch_messages_for_report, chat_id)
+        messages = await asyncio.to_thread(
+            self._fetch_messages_for_report,
+            chat_id,
+        )
 
         if not messages:
             logger.warning("No messages found for today's report.")
@@ -83,14 +91,15 @@ class ReportingService:
         unique_chats = len(grouped_msgs)
 
         stats_text = (
-            f"- **Total de Mensagens:** {total_msgs}\n" f"- **Conversas Ativas:** {unique_chats}"
+            f"- **Total de Mensagens:** {total_msgs}\n" + f"- **Conversas Ativas:** {unique_chats}"
         )
 
         # 2. Summarize
         summary = await ai_service.summarize_conversations(final_data)
 
+        today_str = datetime.now().strftime("%d/%m/%Y")
         report_text = f"""# 📅 Relatório Diário de Conversas
-**Data:** {datetime.now().strftime('%d/%m/%Y')}
+**Data:** {today_str}
 
 ## 📊 Estatísticas
 {stats_text}
@@ -110,7 +119,9 @@ class ReportingService:
             try:
                 if target_entity:
                     await self.client.send_message(target_entity, report_text)
-                    logger.info(f"Daily report sent successfully to {target_entity.id}.")
+                    logger.info(
+                        f"Daily report sent successfully to {target_entity.id}.",
+                    )
                 else:
                     logger.error("No valid target entity found to send the report.")
             except Exception as e:
