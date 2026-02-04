@@ -47,20 +47,29 @@ class ConversationService:
                     limit = int(parts[1])
 
                 # Feedback to user
-                await self.client.send_message(chat_id, f"🧠 Iniciando aprendizado das últimas {limit} mensagens...")
+                await self.client.send_message(
+                    chat_id, f"🧠 Iniciando aprendizado das últimas {limit} mensagens..."
+                )
 
                 status_msg = await learning_service.ingest_history(chat_id, limit)
                 await self.client.send_message(chat_id, f"✅ {status_msg}")
                 return
 
             if text.strip().startswith("/relatorio"):
-                 await self.client.send_message(chat_id, "📊 Gerando relatório para esta conversa...")
-                 report_text = await reporting_service.generate_daily_report(chat_id=chat_id)
-                 if report_text:
-                     await self.client.send_message(chat_id, report_text)
-                 else:
-                     await self.client.send_message(chat_id, "⚠️ Não foi possível gerar o relatório.")
-                 return
+                await self.client.send_message(
+                    chat_id,
+                    "📊 Gerando relatório para esta conversa...",
+                )
+                report_text = await reporting_service.generate_daily_report(
+                    chat_id=chat_id
+                )
+                if report_text:
+                    await self.client.send_message(chat_id, report_text)
+                else:
+                    await self.client.send_message(
+                        chat_id, "⚠️ Não foi possível gerar o relatório."
+                    )
+                return
             # ------------------------
 
             # Determine sender name
