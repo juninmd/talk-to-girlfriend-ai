@@ -25,7 +25,7 @@ class LearningService:
                 pass
         return self._me
 
-    async def ingest_history(self, chat_id: int, limit: int = 100):
+    async def ingest_history(self, chat_id: int, limit: int = 100) -> str:
         """Fetches past messages and saves them to DB. Learns from recent ones."""
         logger.info(f"Starting history ingestion for chat {chat_id}, limit={limit}...")
         try:
@@ -44,13 +44,12 @@ class LearningService:
             relevant_msgs = self._filter_relevant_messages(messages_list)
             await self._process_learning_batch(chat_id, relevant_msgs)
 
-            logger.info(
-                f"Ingested {count} messages for chat {chat_id}. Analyzed {len(relevant_msgs)} for facts."
-            )
-            return count
+            msg = f"Ingested {count} messages. Analyzed {len(relevant_msgs)} for facts."
+            logger.info(f"Chat {chat_id}: {msg}")
+            return msg
         except Exception as e:
             logger.error(f"Error ingesting history: {e}")
-            return 0
+            return f"Error: {str(e)}"
 
     def _get_last_synced_id(self, chat_id: int) -> int:
         with Session(engine) as session:
