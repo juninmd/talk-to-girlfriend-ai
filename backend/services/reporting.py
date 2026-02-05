@@ -125,12 +125,12 @@ class ReportingService:
                         f"Daily report sent successfully to {target_entity.id}.",
                     )
                 elif not settings.REPORT_CHANNEL_ID:
-                     # Fallback to 'me' only if explicitly allowed or debug mode?
-                     # For now, following current logic: if no ID set, use target_entity which fell back to 'me'
-                     # But let's log a warning.
-                     logger.warning("REPORT_CHANNEL_ID not set. Sending report to Saved Messages.")
-                     if target_entity:
-                         await self.client.send_message(target_entity, report_text)
+                    # Fallback to 'me' only if explicitly allowed or debug mode?
+                    # For now, following current logic: if no ID set, use target_entity which fell back to 'me'
+                    # But let's log a warning.
+                    logger.warning("REPORT_CHANNEL_ID not set. Sending report to Saved Messages.")
+                    if target_entity:
+                        await self.client.send_message(target_entity, report_text)
                 else:
                     logger.error("No valid target entity found to send the report.")
             except Exception as e:

@@ -7,6 +7,7 @@ from backend.services.reporting import reporting_service
 from backend.services.ai import ai_service
 from backend.settings import settings
 
+
 @pytest.mark.asyncio
 async def test_conversation_flow_reply():
     """
@@ -58,9 +59,9 @@ async def test_conversation_flow_reply():
         # Assert AI was called correctly
         mock_gen.assert_called_once()
         args, _ = mock_gen.call_args
-        assert args[0] == 12345 # chat_id
-        assert args[1] == "Hello bot, how are you?" # message
-        assert args[2] == "Test User" # sender_name
+        assert args[0] == 12345  # chat_id
+        assert args[1] == "Hello bot, how are you?"  # message
+        assert args[2] == "Test User"  # sender_name
 
         # Assert Reply was sent
         mock_client.send_message.assert_called_once()
@@ -97,7 +98,9 @@ async def test_reporting_flow():
 
     # Mock methods
     with patch.object(reporting_service, "_fetch_messages_for_report", return_value=mock_msgs):
-        with patch.object(ai_service, "summarize_conversations", new_callable=AsyncMock) as mock_sum:
+        with patch.object(
+            ai_service, "summarize_conversations", new_callable=AsyncMock
+        ) as mock_sum:
             mock_sum.return_value = "Here is the summary."
 
             # Act
@@ -115,6 +118,7 @@ async def test_reporting_flow():
             args, _ = mock_client.send_message.call_args
             assert args[0].id == -100123456789
             assert args[1] == report
+
 
 @pytest.mark.asyncio
 async def test_reporting_flow_fallback():
@@ -134,7 +138,9 @@ async def test_reporting_flow_fallback():
     reporting_service.client = mock_client
 
     with patch.object(reporting_service, "_fetch_messages_for_report", return_value=mock_msgs):
-        with patch.object(ai_service, "summarize_conversations", new_callable=AsyncMock) as mock_sum:
+        with patch.object(
+            ai_service, "summarize_conversations", new_callable=AsyncMock
+        ) as mock_sum:
             mock_sum.return_value = "Summary"
 
             # Act
