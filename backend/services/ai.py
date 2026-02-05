@@ -26,8 +26,8 @@ class AIService:
     def __init__(self):
         self.model = None
         if settings.GOOGLE_API_KEY:
-            # Using Gemini 3 Flash Preview for better performance and cost-efficiency
-            self.model = genai.GenerativeModel("gemini-3-flash-preview")
+            # Using Gemini 1.5 Flash for better performance and stability
+            self.model = genai.GenerativeModel("gemini-1.5-flash")
         else:
             logger.warning("GOOGLE_API_KEY not set. AI features disabled.")
 
@@ -60,6 +60,9 @@ class AIService:
             match_array = re.search(r"\[.*\]", raw_text, re.DOTALL)
             if match_array:
                 raw_text = match_array.group(0)
+
+            # 3. Clean up any remaining whitespace or markdown
+            raw_text = raw_text.strip()
 
             facts = json.loads(raw_text)
 
