@@ -75,7 +75,7 @@ class ConversationService:
             # ------------------------
 
             # Determine sender name
-            sender_name = get_sender_name(event.message)
+            sender_name = get_sender_name(event.message) or "Unknown"
 
             # Trigger reply
             asyncio.create_task(
@@ -124,7 +124,7 @@ class ConversationService:
                     await self.client.send_message(
                         chat_id, response_text, reply_to=reply_to_msg_id
                     )
-                    logger.info(f"Sent reply to chat {chat_id}")
+                    logger.info(f"Sent reply to chat {chat_id} (User: {sender_name})")
         except Exception as e:
             logger.error(f"Error sending reply to {chat_id}: {e}")
 
