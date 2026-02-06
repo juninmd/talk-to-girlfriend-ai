@@ -1,6 +1,8 @@
 import asyncio
 import logging
 from telethon.tl.types import User
+from sqlmodel import Session, select
+from backend.database import engine, Fact
 from backend.client import client
 from backend.services.ai import ai_service
 from backend.services.learning import learning_service
@@ -40,37 +42,7 @@ class ConversationService:
             reply_to_msg_id = event.message.id if not event.is_private else None
 
             # --- Command Handling ---
-            if text.strip().startswith("/aprender"):
-                parts = text.split()
-                limit = 50
-                if len(parts) > 1 and parts[1].isdigit():
-                    limit = int(parts[1])
-
-                # Feedback to user
-                await self.client.send_message(
-                    chat_id,
-                    f"🧠 Iniciando aprendizado das últimas {limit} mensagens...",
-                )
-
-                status_msg = await learning_service.ingest_history(chat_id, limit)
-                await self.client.send_message(chat_id, f"✅ {status_msg}")
-                return
-
-            if text.strip().startswith("/relatorio"):
-                await self.client.send_message(
-                    chat_id,
-                    "📊 Gerando relatório para esta conversa...",
-                )
-                report_text = await reporting_service.generate_daily_report(
-                    chat_id=chat_id,
-                )
-                if report_text:
-                    await self.client.send_message(chat_id, report_text)
-                else:
-                    await self.client.send_message(
-                        chat_id,
-                        "⚠️ Não foi possível gerar o relatório.",
-                    )
+            if await self._handle_commands(chat_id, text):
                 return
             # ------------------------
 
@@ -127,6 +99,82 @@ class ConversationService:
                     logger.info(f"Sent reply to chat {chat_id} (User: {sender_name})")
         except Exception as e:
             logger.error(f"Error sending reply to {chat_id}: {e}")
+
+    async def _handle_commands(self, chat_id: int, text: str) -> bool:
+        """
+        Handles commands like /aprender, /relatorio, /fatos.
+        Returns True if a command was handled, False otherwise.
+        """
+        text = text.strip()
+
+        if text.startswith("/aprender"):
+            parts = text.split()
+            limit = 50
+            if len(parts) > 1 and parts[1].isdigit():
+                limit = int(parts[1])
+
+            # Feedback to user
+            await self.client.send_message(
+                chat_id,
+                f"🧠 Iniciando aprendizado das últimas {limit} mensagens...",
+            )
+
+            status_msg = await learning_service.ingest_history(chat_id, limit)
+            await self.client.send_message(chat_id, f"✅ {status_msg}")
+            return True
+
+        if text.startswith("/relatorio"):
+            await self.client.send_message(
+                chat_id,
+                "📊 Gerando relatório para esta conversa...",
+            )
+            report_text = await reporting_service.generate_daily_report(
+                chat_id=chat_id,
+            )
+            if report_text:
+                await self.client.send_message(chat_id, report_text)
+            else:
+                await self.client.send_message(
+                    chat_id,
+                    "⚠️ Não foi possível gerar o relatório.",
+                )
+            return True
+
+        if text.startswith("/fatos"):
+            await self.client.send_message(chat_id, "🧠 Buscando fatos conhecidos...")
+
+            try:
+                facts = await asyncio.to_thread(self._fetch_facts, chat_id)
+                if not facts:
+                    await self.client.send_message(
+                        chat_id, "🤷‍♂️ Não conheço nenhum fato sobre esta conversa ainda."
+                    )
+                else:
+                    response_lines = ["**Fatos Conhecidos:**", ""]
+                    grouped = {}
+                    for f in facts:
+                        if f.category not in grouped:
+                            grouped[f.category] = []
+                        grouped[f.category].append(f"{f.entity_name}: {f.value}")
+
+                    for category, items in grouped.items():
+                        response_lines.append(f"_{category.capitalize()}_")
+                        for item in items:
+                            response_lines.append(f"• {item}")
+                        response_lines.append("")
+
+                    await self.client.send_message(chat_id, "\n".join(response_lines))
+            except Exception as e:
+                logger.error(f"Error fetching facts: {e}")
+                await self.client.send_message(chat_id, "❌ Erro ao buscar fatos.")
+            return True
+
+        return False
+
+    def _fetch_facts(self, chat_id: int):
+        with Session(engine) as session:
+            statement = select(Fact).where(Fact.chat_id == chat_id)
+            return session.exec(statement).all()
 
 
 conversation_service = ConversationService()
