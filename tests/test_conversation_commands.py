@@ -3,17 +3,20 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from backend.services.conversation import ConversationService
 from backend.database import Fact
 
+
 @pytest.fixture
 def mock_client():
     client = MagicMock()
     client.send_message = AsyncMock()
     return client
 
+
 @pytest.fixture
 def service(mock_client):
     service = ConversationService()
     service.client = mock_client
     return service
+
 
 @pytest.mark.asyncio
 async def test_handle_commands_aprender(service):
@@ -24,7 +27,8 @@ async def test_handle_commands_aprender(service):
 
         assert result is True
         mock_learn.ingest_history.assert_called_once_with(123, 20)
-        assert service.client.send_message.call_count == 2 # Starting + Done
+        assert service.client.send_message.call_count == 2  # Starting + Done
+
 
 @pytest.mark.asyncio
 async def test_handle_commands_relatorio(service):
@@ -37,37 +41,42 @@ async def test_handle_commands_relatorio(service):
         mock_report.generate_daily_report.assert_called_once_with(chat_id=123)
         assert service.client.send_message.call_count == 2
 
+
 @pytest.mark.asyncio
 async def test_handle_commands_fatos_empty(service):
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
-         mock_thread.return_value = []
+        mock_thread.return_value = []
 
-         result = await service._handle_commands(123, "/fatos")
+        result = await service._handle_commands(123, "/fatos")
 
-         assert result is True
-         service.client.send_message.assert_any_call(123, "🧠 Buscando fatos conhecidos...")
-         service.client.send_message.assert_any_call(123, "🤷‍♂️ Não conheço nenhum fato sobre esta conversa ainda.")
+        assert result is True
+        service.client.send_message.assert_any_call(123, "🧠 Buscando fatos conhecidos...")
+        service.client.send_message.assert_any_call(
+            123, "🤷‍♂️ Não conheço nenhum fato sobre esta conversa ainda."
+        )
+
 
 @pytest.mark.asyncio
 async def test_handle_commands_fatos_found(service):
     facts = [
         Fact(entity_name="Alice", value="Software Engineer", category="work"),
-        Fact(entity_name="Bob", value="Pizza", category="preference")
+        Fact(entity_name="Bob", value="Pizza", category="preference"),
     ]
 
     with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_thread:
-         mock_thread.return_value = facts
+        mock_thread.return_value = facts
 
-         result = await service._handle_commands(123, "/fatos")
+        result = await service._handle_commands(123, "/fatos")
 
-         assert result is True
-         # Check if the message contains the facts
-         args, _ = service.client.send_message.call_args_list[-1]
-         msg_text = args[1]
-         assert "Alice: Software Engineer" in msg_text
-         assert "Bob: Pizza" in msg_text
-         assert "_Work_" in msg_text
-         assert "_Preference_" in msg_text
+        assert result is True
+        # Check if the message contains the facts
+        args, _ = service.client.send_message.call_args_list[-1]
+        msg_text = args[1]
+        assert "Alice: Software Engineer" in msg_text
+        assert "Bob: Pizza" in msg_text
+        assert "_Work_" in msg_text
+        assert "_Preference_" in msg_text
+
 
 @pytest.mark.asyncio
 async def test_handle_commands_unknown(service):
