@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 import os
+import asyncio
 
 # Set dummy env vars
 os.environ["TELEGRAM_API_ID"] = "123"
@@ -14,13 +15,10 @@ from backend.services.learning import LearningService  # noqa: E402
 @pytest.mark.asyncio
 async def test_fact_extraction():
     service = AIService()
-    service.model = MagicMock()
-    # Mock response to be valid JSON
-    service.model.generate_content_async = AsyncMock(
-        return_value=MagicMock(
-            text='[{"entity": "Name", "value": "Alice", "category": "personal"}]'
-        )
-    )
+    mock_client = MagicMock()
+    mock_response = MagicMock(text='[{"entity": "Name", "value": "Alice", "category": "personal"}]')
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
+    service.client = mock_client
 
     facts = await service.extract_facts("My name is Alice")
     assert len(facts) == 1
@@ -50,6 +48,10 @@ async def test_ingest_history_flow():
         service = LearningService()
         service.client = mock_client
 
+        # Patch the helper methods we refactored
+        service._fetch_history_messages = AsyncMock(return_value=[msg])
+        service._process_learning_batch = AsyncMock()
+
         # Mock DB interaction for min_id
         # We need to patch Session to return a context manager that has a session with exec
         with patch("backend.services.learning.Session") as mock_session_cls:
@@ -59,24 +61,13 @@ async def test_ingest_history_flow():
             # exec().first() should return 0 or None. Let's return None (no history)
             mock_session.exec.return_value.first.return_value = None
 
-            # Mock DB save (it's run in thread, so we patch asyncio.to_thread or the method itself if possible)
-            # But ingest_history calls asyncio.to_thread(self._save_message_to_db, ...)
-
+            # Mock DB save (it's run in thread, so we patch asyncio.to_thread)
             with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
+                # First call is save_message, second is save_facts? No, ingest only calls save_message.
+                # Actually process_messages_ingestion calls to_thread(save_message)
                 mock_to_thread.return_value = 1  # DB ID
-
-                # Also mock _analyze_and_extract_safe (it's a method on service)
-                # Actually ingest_history calls asyncio.create_task(self._analyze_and_extract_safe(...))
-                # So _analyze_and_extract_safe should allow being scheduled.
-
-                # Since create_task expects a coroutine, we need _analyze_and_extract_safe to return one.
-                async def dummy_analyze(*args, **kwargs):
-                    pass
-
-                # Patching the method on the instance
-                service._analyze_and_extract_safe = MagicMock(side_effect=dummy_analyze)
 
                 result_msg = await service.ingest_history(123, limit=5)
 
                 assert "Ingested 1 messages" in result_msg
-                mock_client.get_messages.assert_called_with("dummy_entity", limit=5, min_id=0)
+                service._fetch_history_messages.assert_called_with("dummy_entity", 5, 0)

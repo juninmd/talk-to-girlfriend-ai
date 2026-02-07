@@ -13,7 +13,7 @@ from backend.services.ai import AIService  # noqa: E402
 @pytest.mark.asyncio
 async def test_extract_facts_with_markdown_blocks():
     service = AIService()
-    service.model = MagicMock()
+    mock_client = MagicMock()
 
     # Mock response with Markdown code blocks
     markdown_response = """
@@ -27,9 +27,10 @@ async def test_extract_facts_with_markdown_blocks():
     Hope this helps!
     """
 
-    service.model.generate_content_async = AsyncMock(
+    mock_client.aio.models.generate_content = AsyncMock(
         return_value=MagicMock(text=markdown_response)
     )
+    service.client = mock_client
 
     facts = await service.extract_facts("Text doesn't matter here due to mock")
 
@@ -41,7 +42,7 @@ async def test_extract_facts_with_markdown_blocks():
 @pytest.mark.asyncio
 async def test_extract_facts_with_generic_markdown_blocks():
     service = AIService()
-    service.model = MagicMock()
+    mock_client = MagicMock()
 
     # Mock response with generic code blocks
     markdown_response = """
@@ -52,9 +53,10 @@ async def test_extract_facts_with_generic_markdown_blocks():
     ```
     """
 
-    service.model.generate_content_async = AsyncMock(
+    mock_client.aio.models.generate_content = AsyncMock(
         return_value=MagicMock(text=markdown_response)
     )
+    service.client = mock_client
 
     facts = await service.extract_facts("Text doesn't matter")
 

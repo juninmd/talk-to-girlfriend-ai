@@ -30,23 +30,26 @@ async def test_learning_service_ingest_history_batch_processing():
     service.client = mock_client
 
     # Mock internal methods
-    service._save_message_to_db = MagicMock(return_value=1)  # Returns DB ID
-    service._analyze_and_extract = AsyncMock()
+    # We need to ensure _save_message_to_db is callable (it is)
+    # But it is called via asyncio.to_thread in _process_messages_ingestion
 
-    # We need to mock asyncio.to_thread to just call the function synchronously or return a value
-    # In the code: await asyncio.to_thread(self._save_message_to_db, msg_data)
-    # So we can just make it run the function.
+    # We can patch _save_message_to_db to be a simple function that returns 1
+    # But to_thread takes the function, so we need to patch to_thread to execute it.
 
-    with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-        mock_to_thread.side_effect = lambda func, *args: func(*args)
+    with patch.object(service, "_save_message_to_db", return_value=1):
+        with patch.object(service, "_analyze_and_extract", new_callable=AsyncMock) as mock_analyze:
 
-        # We also need to patch asyncio.sleep to avoid waiting
-        with patch("asyncio.sleep", new_callable=AsyncMock):
-            result_msg = await service.ingest_history(chat_id=123, limit=10)
+            with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
+                # Mock to_thread to execute the function synchronously
+                mock_to_thread.side_effect = lambda func, *args: func(*args)
 
-            assert "Ingested 10 messages" in result_msg
-            # Check if analyze was called for all 10 messages (since they are all valid text > 5 chars)
-            assert service._analyze_and_extract.call_count == 10
+                # We also need to patch asyncio.sleep to avoid waiting
+                with patch("asyncio.sleep", new_callable=AsyncMock):
+                    result_msg = await service.ingest_history(chat_id=123, limit=10)
+
+                    assert "Ingested 10 messages" in result_msg
+                    # Check if analyze was called for all 10 messages
+                    assert mock_analyze.call_count == 10
 
 
 # --- Reporting Service Tests ---
@@ -93,31 +96,32 @@ async def test_reporting_service_grouping_logic():
                 return entity2
             return MagicMock(title="Unknown")
 
-        # We need to patch the global 'client' used in reporting.py, not an instance attr
-        with patch("backend.services.reporting.client", mock_client):
-            service.client = mock_client
-            mock_client.get_entity.side_effect = get_entity_side_effect
+        # We need to patch the global 'client' used in reporting.py
+        # But we can just set service.client since we init it
+        service.client = mock_client
+        mock_client.get_entity.side_effect = get_entity_side_effect
 
-            with patch("backend.services.reporting.ai_service", mock_ai_service):
-                mock_ai_service.summarize_conversations.return_value = "Summary"
+        # Patch ai_service imported in reporting.py
+        with patch("backend.services.reporting.ai_service", mock_ai_service):
+            mock_ai_service.summarize_conversations.return_value = "Summary"
 
-                # Mock REPORT_CHANNEL_ID
-                with patch("backend.services.reporting.settings") as mock_settings:
-                    mock_settings.REPORT_CHANNEL_ID = 999
-                    mock_client.send_message.return_value = True
+            # Mock REPORT_CHANNEL_ID
+            with patch("backend.services.reporting.settings") as mock_settings:
+                mock_settings.REPORT_CHANNEL_ID = 999
+                mock_client.send_message.return_value = True
 
-                    await service.generate_daily_report()
+                await service.generate_daily_report()
 
-                    # Verify summarize_conversations was called with a dict
-                    args, _ = mock_ai_service.summarize_conversations.call_args
-                    data = args[0]
+                # Verify summarize_conversations was called with a dict
+                args, _ = mock_ai_service.summarize_conversations.call_args
+                data = args[0]
 
-                    assert isinstance(data, dict)
-                    # Keys now include ID
-                    assert "Group A (ID: 1)" in data
-                    assert "Group B (ID: 2)" in data
-                    assert len(data["Group A (ID: 1)"]) == 2
-                    assert len(data["Group B (ID: 2)"]) == 1
+                assert isinstance(data, dict)
+                # Keys now include ID
+                assert "Group A (ID: 1)" in data
+                assert "Group B (ID: 2)" in data
+                assert len(data["Group A (ID: 1)"]) == 2
+                assert len(data["Group B (ID: 2)"]) == 1
 
 
 # --- AI Service Tests ---
@@ -126,8 +130,10 @@ async def test_reporting_service_grouping_logic():
 @pytest.mark.asyncio
 async def test_ai_service_summarize_grouped_data():
     service = AIService()
-    service.model = AsyncMock()
-    service.model.generate_content_async.return_value.text = "Summary Result"
+    mock_client = MagicMock()
+    mock_response = MagicMock(text="Summary Result")
+    mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
+    service.client = mock_client
 
     # Test with Dict
     data = {
@@ -139,8 +145,15 @@ async def test_ai_service_summarize_grouped_data():
     await service.summarize_conversations(data)
 
     # Check prompt content
-    args, _ = service.model.generate_content_async.call_args
-    prompt = args[0]
+    # generate_content(model=..., contents=...)
+    kwargs = service.client.aio.models.generate_content.call_args.kwargs
+    prompt = kwargs.get("contents")
+    if not prompt:
+        # Fallback to positional args
+        args = service.client.aio.models.generate_content.call_args.args
+        if len(args) > 1:
+            prompt = args[1]
+
     assert "Chat A" in prompt
     assert "Alice" in prompt
     assert "Hi" in prompt

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 from telethon.tl.types import User
 from sqlmodel import Session, select
 from backend.database import engine, Fact
@@ -68,14 +69,15 @@ class ConversationService:
     ):
         """Generates a response using AI and sends it."""
         try:
-            # Simulate processing/reading time
-            delay = min(
-                settings.CONVERSATION_MAX_DELAY,
-                max(
-                    settings.CONVERSATION_MIN_DELAY,
-                    len(user_message) * settings.CONVERSATION_TYPING_SPEED,
-                ),
+            # Simulate processing/reading time with jitter
+            base_delay = max(
+                settings.CONVERSATION_MIN_DELAY,
+                len(user_message) * settings.CONVERSATION_TYPING_SPEED,
             )
+            # Add random jitter (±20%)
+            jitter = random.uniform(0.8, 1.2)
+            delay = min(settings.CONVERSATION_MAX_DELAY, base_delay * jitter)
+
             await asyncio.sleep(delay)
 
             async with self.client.action(chat_id, "typing"):
@@ -85,10 +87,10 @@ class ConversationService:
                 )
 
                 # Wait a bit more to simulate typing the response
-                # Allow slightly longer delay for typing long responses
+                base_typing_delay = len(response_text) * settings.CONVERSATION_TYPING_SPEED
                 typing_delay = min(
                     settings.CONVERSATION_MAX_DELAY * 1.5,
-                    len(response_text) * settings.CONVERSATION_TYPING_SPEED,
+                    base_typing_delay * random.uniform(0.8, 1.2)
                 )
                 await asyncio.sleep(typing_delay)
 
