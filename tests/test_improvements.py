@@ -28,10 +28,25 @@ async def test_learning_from_outgoing_message():
                     {"entity": "Python", "value": "Love it", "category": "tech"}
                 ]
 
-                await learning_service.handle_message_learning(mock_event)
+                # Capture the background task
+                with patch("backend.services.learning.asyncio.create_task") as mock_create_task:
+                    # Mock create_task to behave like a pass-through or return a dummy task,
+                    # but we want to await the coroutine it received.
 
-                # Allow async task to start
-                await asyncio.sleep(0.01)
+                    # Setup side_effect to return a dummy task but capture the coro
+                    captured_coros = []
+                    mock_create_task.side_effect = lambda c: captured_coros.append(c)
+
+                    await learning_service.handle_message_learning(mock_event)
+
+                    # Verify create_task was called
+                    assert mock_create_task.called
+                    if captured_coros:
+                        await captured_coros[0]
+                    else:
+                        # Fallback if side_effect didn't work as expected or logic changed
+                        coro = mock_create_task.call_args[0][0]
+                        await coro
 
                 # Verify save_message called
                 mock_save.assert_called_once()
@@ -58,10 +73,11 @@ async def test_ignore_generated_reports():
             "backend.services.learning.ai_service.extract_facts", new_callable=AsyncMock
         ) as mock_extract:
 
-            await learning_service.handle_message_learning(mock_event)
+            with patch("backend.services.learning.asyncio.create_task") as mock_create_task:
+                await learning_service.handle_message_learning(mock_event)
 
-            # Allow async task to start (if it were called)
-            await asyncio.sleep(0.01)
+                # Should NOT spawn a task for reports
+                mock_create_task.assert_not_called()
 
             # Verify save_message called (we still save the log)
             mock_save.assert_called_once()

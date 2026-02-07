@@ -7,42 +7,47 @@ from backend.services.reporting import reporting_service
 
 @pytest.mark.asyncio
 async def test_ai_service_extract_facts():
-    # Mock the model
-    mock_model = AsyncMock()
+    # Mock the client
+    mock_client = MagicMock()
     mock_response = MagicMock()
     # Return a clean JSON list
     mock_response.text = '[{"entity": "Test", "value": "Value", "category": "test"}]'
-    mock_model.generate_content_async.return_value = mock_response
+
+    # Mock the async chain: client.aio.models.generate_content
+    mock_generate = AsyncMock(return_value=mock_response)
+    mock_client.aio.models.generate_content = mock_generate
 
     # Inject mock
-    original_model = ai_service.model
-    ai_service.model = mock_model
+    original_client = ai_service.client
+    ai_service.client = mock_client
 
     try:
         facts = await ai_service.extract_facts("Some text")
         assert len(facts) == 1
         assert facts[0]["entity"] == "Test"
     finally:
-        ai_service.model = original_model
+        ai_service.client = original_client
 
 
 @pytest.mark.asyncio
 async def test_ai_service_extract_facts_with_markdown():
-    # Mock the model with markdown code blocks
-    mock_model = AsyncMock()
+    # Mock the client with markdown code blocks
+    mock_client = MagicMock()
     mock_response = MagicMock()
     mock_response.text = '```json\n[{"entity": "Test", "value": "Value", "category": "test"}]\n```'
-    mock_model.generate_content_async.return_value = mock_response
 
-    original_model = ai_service.model
-    ai_service.model = mock_model
+    mock_generate = AsyncMock(return_value=mock_response)
+    mock_client.aio.models.generate_content = mock_generate
+
+    original_client = ai_service.client
+    ai_service.client = mock_client
 
     try:
         facts = await ai_service.extract_facts("Some text")
         assert len(facts) == 1
         assert facts[0]["entity"] == "Test"
     finally:
-        ai_service.model = original_model
+        ai_service.client = original_client
 
 
 @pytest.mark.asyncio

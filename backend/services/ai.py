@@ -3,8 +3,11 @@ import logging
 import asyncio
 import re
 from datetime import datetime, timezone
-import google.generativeai as genai
 from typing import List, Dict, Any
+
+from google import genai
+from google.genai import types
+
 from sqlmodel import Session, select
 from backend.database import engine, Message, Fact
 from backend.settings import settings
@@ -17,17 +20,12 @@ from backend.utils import async_retry
 
 logger = logging.getLogger(__name__)
 
-# Configure Gemini
-if settings.GOOGLE_API_KEY:
-    genai.configure(api_key=settings.GOOGLE_API_KEY)
-
 
 class AIService:
     def __init__(self):
-        self.model = None
+        self.client = None
         if settings.GOOGLE_API_KEY:
-            # Using Gemini 1.5 Flash for better performance and stability
-            self.model = genai.GenerativeModel("gemini-1.5-flash")
+            self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         else:
             logger.warning("GOOGLE_API_KEY not set. AI features disabled.")
 
@@ -37,15 +35,19 @@ class AIService:
         Uses LLM to extract facts from text.
         Returns a list of dicts: {'entity': str, 'value': str, 'category': str}
         """
-        if not self.model:
+        if not self.client:
             return []
 
         prompt = FACT_EXTRACTION_PROMPT.format(text=text)
 
         try:
             # Request JSON output directly
-            response = await self.model.generate_content_async(
-                prompt, generation_config={"response_mime_type": "application/json"}
+            response = await self.client.aio.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                ),
             )
             raw_text = response.text.strip()
 
@@ -56,12 +58,11 @@ class AIService:
                 raw_text = match.group(1).strip()
 
             # 2. Ensure we have the list structure [ ... ]
-            # This handles cases where text is outside the block or no block exists
             match_array = re.search(r"\[.*\]", raw_text, re.DOTALL)
             if match_array:
                 raw_text = match_array.group(0)
 
-            # 3. Clean up any remaining whitespace or markdown
+            # 3. Clean up any remaining whitespace
             raw_text = raw_text.strip()
 
             facts = json.loads(raw_text)
@@ -69,17 +70,16 @@ class AIService:
             valid_facts = []
             if isinstance(facts, list):
                 for f in facts:
-                    if isinstance(f, dict) and "entity" in f and "value" in f and "category" in f:
+                    if isinstance(f, dict) and "entity" in f and "value" in f:
+                        if "category" not in f:
+                            f["category"] = "general"
                         valid_facts.append(f)
             return valid_facts
         except json.JSONDecodeError as e:
             logger.error(f"JSON Decode Error in extract_facts: {e}. Raw text: {raw_text}")
             return []
         except Exception as e:
-            logger.error(
-                f"Error extracting facts: {e}. Raw text: {response.text if 'response' in locals() else 'N/A'}"
-            )
-            # Re-raise to trigger retry
+            logger.error(f"Error extracting facts: {e}")
             raise e
 
     @async_retry(max_attempts=3, delay=2.0)
@@ -90,7 +90,7 @@ class AIService:
         - List[Message]: Flat list of messages (backward compatibility)
         - Dict[str, List[Message]]: Grouped by chat identifier
         """
-        if not self.model or not data:
+        if not self.client or not data:
             return "Sem dados para resumir."
 
         text_log = ""
@@ -120,7 +120,10 @@ class AIService:
         prompt = SUMMARY_PROMPT.format(text_log=text_log)
 
         try:
-            response = await self.model.generate_content_async(prompt)
+            response = await self.client.aio.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+            )
             return response.text
         except Exception as e:
             logger.error(f"Error summarizing: {e}")
@@ -175,7 +178,7 @@ class AIService:
         """
         Generates a natural response using history and facts.
         """
-        if not self.model:
+        if not self.client:
             return "Desculpe, minha IA não está configurada."
 
         # 1. Retrieve Context (Non-blocking)
@@ -198,7 +201,10 @@ class AIService:
         )
 
         try:
-            response = await self.model.generate_content_async(prompt)
+            response = await self.client.aio.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt,
+            )
             return response.text
         except Exception as e:
             logger.error(f"Error generating response: {e}")

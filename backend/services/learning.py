@@ -1,13 +1,13 @@
 import asyncio
+import logging
+from datetime import datetime, timezone
 from telethon import events
 from sqlmodel import Session, select, func
-from datetime import datetime, timezone
 from backend.client import client
 from backend.database import engine, Message, Fact
 from backend.services.ai import ai_service
 from backend.settings import settings
 from backend.utils import get_sender_name
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,7 @@ class LearningService:
         self._me = None
 
     async def _get_me(self):
+        """Lazy load 'me' user."""
         if not self._me:
             try:
                 self._me = await self.client.get_me()
@@ -26,22 +27,19 @@ class LearningService:
         return self._me
 
     async def ingest_history(self, chat_id: int, limit: int = 100) -> str:
-        """Fetches past messages and saves them to DB. Learns from recent ones."""
+        """
+        Fetches past messages and saves them to DB. Learns from recent ones.
+        Returns a summary string.
+        """
         logger.info(f"Starting history ingestion for chat {chat_id}, limit={limit}...")
         try:
             min_id = self._get_last_synced_id(chat_id)
-
-            # We need to resolve the entity first
             entity = await self.client.get_entity(chat_id)
 
-            # Fetch messages strictly newer than min_id
-            messages = await self.client.get_messages(entity, limit=limit, min_id=min_id)
-            messages_list = list(messages)
+            messages = await self._fetch_history_messages(entity, limit, min_id)
+            count = await self._process_messages_ingestion(chat_id, messages)
 
-            count = await self._process_messages_ingestion(chat_id, messages_list)
-
-            # Trigger learning on extracted messages
-            relevant_msgs = self._filter_relevant_messages(messages_list)
+            relevant_msgs = self._filter_relevant_messages(messages)
             await self._process_learning_batch(chat_id, relevant_msgs)
 
             msg = f"Ingested {count} messages. Analyzed {len(relevant_msgs)} for facts."
@@ -51,7 +49,13 @@ class LearningService:
             logger.error(f"Error ingesting history: {e}")
             return f"Error: {str(e)}"
 
+    async def _fetch_history_messages(self, entity, limit: int, min_id: int):
+        """Fetches messages strictly newer than min_id."""
+        messages = await self.client.get_messages(entity, limit=limit, min_id=min_id)
+        return list(messages)
+
     def _get_last_synced_id(self, chat_id: int) -> int:
+        """Gets the last synced telegram_message_id for a chat."""
         with Session(engine) as session:
             statement = select(func.max(Message.telegram_message_id)).where(
                 Message.chat_id == chat_id
@@ -65,6 +69,7 @@ class LearningService:
         return 0
 
     async def _process_messages_ingestion(self, chat_id, messages_list):
+        """Saves messages to DB and returns count of new messages."""
         count = 0
         # Process oldest first for logical order in DB
         for msg in reversed(messages_list):
@@ -91,6 +96,7 @@ class LearningService:
         return count
 
     def _filter_relevant_messages(self, messages_list):
+        """Filters messages relevant for learning."""
         return [
             m
             for m in messages_list
@@ -103,7 +109,7 @@ class LearningService:
         ]
 
     async def _process_learning_batch(self, chat_id, relevant_msgs):
-        # Analyze in batches to avoid overwhelming the API
+        """Processes learning in batches."""
         batch_size = settings.LEARNING_BATCH_SIZE
         total_batches = (len(relevant_msgs) + batch_size - 1) // batch_size
 
@@ -198,7 +204,6 @@ class LearningService:
             db_message_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
 
             # 2. Asynchronously extract facts (Learning)
-            # Learn from both incoming and outgoing, but filter out Reports
             if text and len(text) > 10 and db_message_id:
                 # Avoid learning from our own generated reports
                 if text.startswith("# 📅 Relatório Diário") or text.startswith("# 📅 Relatório"):
