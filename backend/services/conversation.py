@@ -112,8 +112,13 @@ class ConversationService:
         if text.startswith("/aprender"):
             parts = text.split()
             limit = 50
-            if len(parts) > 1 and parts[1].isdigit():
-                limit = int(parts[1])
+            if len(parts) > 1:
+                try:
+                    parsed_limit = int(parts[1])
+                    if parsed_limit > 0:
+                        limit = parsed_limit
+                except ValueError:
+                    pass
 
             # Feedback to user
             await self.client.send_message(
@@ -123,6 +128,20 @@ class ConversationService:
 
             status_msg = await learning_service.ingest_history(chat_id, limit)
             await self.client.send_message(chat_id, f"✅ {status_msg}")
+            return True
+
+        if text.startswith("/relatorio_global"):
+            await self.client.send_message(
+                chat_id,
+                "🌍 Gerando e enviando relatório global...",
+            )
+            # chat_id=None triggers sending to the configured channel
+            report_text = await reporting_service.generate_daily_report(chat_id=None)
+
+            if report_text:
+                await self.client.send_message(chat_id, "✅ Relatório global enviado!")
+            else:
+                await self.client.send_message(chat_id, "⚠️ Falha ao gerar relatório.")
             return True
 
         if text.startswith("/relatorio"):
