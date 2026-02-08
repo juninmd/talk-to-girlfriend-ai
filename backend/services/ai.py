@@ -43,7 +43,7 @@ class AIService:
         try:
             # Request JSON output directly
             response = await self.client.aio.models.generate_content(
-                model="gemini-1.5-flash",
+                model=settings.AI_MODEL_NAME,
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json"
@@ -74,6 +74,9 @@ class AIService:
                         if "category" not in f:
                             f["category"] = "general"
                         valid_facts.append(f)
+            else:
+                logger.warning(f"Extracted facts is not a list: {facts}")
+
             return valid_facts
         except json.JSONDecodeError as e:
             logger.error(f"JSON Decode Error in extract_facts: {e}. Raw text: {raw_text}")
@@ -121,7 +124,7 @@ class AIService:
 
         try:
             response = await self.client.aio.models.generate_content(
-                model="gemini-1.5-flash",
+                model=settings.AI_MODEL_NAME,
                 contents=prompt,
             )
             return response.text
@@ -202,7 +205,7 @@ class AIService:
 
         try:
             response = await self.client.aio.models.generate_content(
-                model="gemini-1.5-flash",
+                model=settings.AI_MODEL_NAME,
                 contents=prompt,
             )
             return response.text

@@ -68,6 +68,22 @@ class LearningService:
                 return result
         return 0
 
+    def _create_message_data(self, msg, chat_id):
+        """Helper to create message data dict from Telethon message."""
+        sender_name = get_sender_name(msg)
+        if sender_name == "Unknown":
+            sender_name = str(msg.sender_id)
+
+        return {
+            "telegram_message_id": msg.id,
+            "chat_id": chat_id,
+            "sender_id": msg.sender_id,
+            "sender_name": sender_name,
+            "text": msg.message,
+            "date": msg.date or datetime.now(timezone.utc),
+            "is_outgoing": msg.out,
+        }
+
     async def _process_messages_ingestion(self, chat_id, messages_list):
         """Saves messages to DB and returns count of new messages."""
         count = 0
@@ -76,19 +92,7 @@ class LearningService:
             if not msg.message:
                 continue
 
-            sender_name = get_sender_name(msg)
-            if sender_name == "Unknown":
-                sender_name = str(msg.sender_id)
-
-            msg_data = {
-                "telegram_message_id": msg.id,
-                "chat_id": chat_id,
-                "sender_id": msg.sender_id,
-                "sender_name": sender_name,
-                "text": msg.message,
-                "date": msg.date,
-                "is_outgoing": msg.out,
-            }
+            msg_data = self._create_message_data(msg, chat_id)
 
             db_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
             if db_id:
@@ -180,25 +184,10 @@ class LearningService:
         """
         try:
             chat_id = event.chat_id
-            sender_id = event.sender_id
             text = event.message.message
-            msg_id = event.message.id
-            date = event.message.date or datetime.now(timezone.utc)
             is_outgoing = event.message.out
 
-            sender_name = get_sender_name(event.message)
-            if sender_name == "Unknown":
-                sender_name = str(sender_id)
-
-            msg_data = {
-                "telegram_message_id": msg_id,
-                "chat_id": chat_id,
-                "sender_id": sender_id,
-                "sender_name": sender_name,
-                "text": text,
-                "date": date,
-                "is_outgoing": is_outgoing,
-            }
+            msg_data = self._create_message_data(event.message, chat_id)
 
             # 1. Save to Database (Non-blocking)
             db_message_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
