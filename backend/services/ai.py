@@ -45,9 +45,7 @@ class AIService:
             response = await self.client.aio.models.generate_content(
                 model=settings.AI_MODEL_NAME,
                 contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
-                ),
+                config=types.GenerateContentConfig(response_mime_type="application/json"),
             )
             raw_text = response.text.strip()
 
@@ -65,14 +63,33 @@ class AIService:
             # 3. Clean up any remaining whitespace
             raw_text = raw_text.strip()
 
-            facts = json.loads(raw_text)
+            # Fix common JSON errors from LLMs (e.g. trailing commas)
+            # This is a basic attempt; for robust parsing, use a lenient parser if available.
+
+            try:
+                facts = json.loads(raw_text)
+            except json.JSONDecodeError:
+                # Fallback: try to find the list again or repair simplistic errors?
+                # For now, let's just log and return empty, the retry decorator handles transient issues.
+                logger.warning(f"Failed to parse JSON: {raw_text[:100]}...")
+                return []
 
             valid_facts = []
             if isinstance(facts, list):
                 for f in facts:
-                    if isinstance(f, dict) and "entity" in f and "value" in f:
+                    if isinstance(f, dict) and f.get("entity") and f.get("value"):
+                        # Normalize keys
+                        entity = str(f["entity"]).strip()
+                        value = str(f["value"]).strip()
+
+                        if not entity or not value:
+                            continue
+
                         if "category" not in f:
                             f["category"] = "general"
+
+                        f["entity"] = entity
+                        f["value"] = value
                         valid_facts.append(f)
             else:
                 logger.warning(f"Extracted facts is not a list: {facts}")

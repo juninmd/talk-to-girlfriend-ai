@@ -1,4 +1,3 @@
-import asyncio
 import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from backend.services.learning import learning_service
@@ -33,20 +32,24 @@ async def test_learning_from_outgoing_message():
                     # Mock create_task to behave like a pass-through or return a dummy task,
                     # but we want to await the coroutine it received.
 
-                    # Setup side_effect to return a dummy task but capture the coro
+                    # Setup side_effect to capture the coro
                     captured_coros = []
-                    mock_create_task.side_effect = lambda c: captured_coros.append(c)
+
+                    def side_effect(coro):
+                        captured_coros.append(coro)
+                        return MagicMock()  # Return a dummy task
+
+                    mock_create_task.side_effect = side_effect
 
                     await learning_service.handle_message_learning(mock_event)
 
                     # Verify create_task was called
                     assert mock_create_task.called
+
+                    # Manually await the captured coroutine to prevent "never awaited" warning
+                    # and to execute the extraction logic
                     if captured_coros:
                         await captured_coros[0]
-                    else:
-                        # Fallback if side_effect didn't work as expected or logic changed
-                        coro = mock_create_task.call_args[0][0]
-                        await coro
 
                 # Verify save_message called
                 mock_save.assert_called_once()

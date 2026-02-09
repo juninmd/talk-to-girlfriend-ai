@@ -105,7 +105,7 @@ class LearningService:
             m
             for m in messages_list
             if m.message
-            and len(m.message) > 5
+            and len(m.message) >= settings.MIN_MESSAGE_LENGTH_FOR_LEARNING
             and not (
                 m.message.startswith("# 📅 Relatório Diário")
                 or m.message.startswith("# 📅 Relatório")
@@ -193,7 +193,7 @@ class LearningService:
             db_message_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
 
             # 2. Asynchronously extract facts (Learning)
-            if text and len(text) > 10 and db_message_id:
+            if text and len(text) >= settings.MIN_MESSAGE_LENGTH_FOR_LEARNING and db_message_id:
                 # Avoid learning from our own generated reports
                 if text.startswith("# 📅 Relatório Diário") or text.startswith("# 📅 Relatório"):
                     return

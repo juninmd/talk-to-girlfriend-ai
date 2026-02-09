@@ -90,7 +90,7 @@ class ConversationService:
                 base_typing_delay = len(response_text) * settings.CONVERSATION_TYPING_SPEED
                 typing_delay = min(
                     settings.CONVERSATION_MAX_DELAY * 1.5,
-                    base_typing_delay * random.uniform(0.8, 1.2)
+                    base_typing_delay * random.uniform(0.8, 1.2),
                 )
                 await asyncio.sleep(typing_delay)
 
@@ -194,7 +194,12 @@ class ConversationService:
 
     def _fetch_facts(self, chat_id: int):
         with Session(engine) as session:
-            statement = select(Fact).where(Fact.chat_id == chat_id)
+            statement = (
+                select(Fact)
+                .where(Fact.chat_id == chat_id)
+                .order_by(Fact.created_at.desc())
+                .limit(30)
+            )
             return session.exec(statement).all()
 
 

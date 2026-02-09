@@ -1,7 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 import os
-import asyncio
 
 # Set dummy env vars
 os.environ["TELEGRAM_API_ID"] = "123"
@@ -16,7 +15,9 @@ from backend.services.learning import LearningService  # noqa: E402
 async def test_fact_extraction():
     service = AIService()
     mock_client = MagicMock()
-    mock_response = MagicMock(text='[{"entity": "Name", "value": "Alice", "category": "personal"}]')
+    mock_response = MagicMock(
+        text='[{"entity": "Name", "value": "Alice", "category": "personal"}]'
+    )
     mock_client.aio.models.generate_content = AsyncMock(return_value=mock_response)
     service.client = mock_client
 
