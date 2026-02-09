@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from sqlmodel import Session, select
 from backend.database import engine, Message
@@ -37,9 +37,7 @@ class ReportingService:
 
         # 3. Generate Report Content
         report_text = await self._generate_report_content(
-            final_data,
-            total_msgs=len(messages),
-            unique_chats=len(final_data)
+            final_data, total_msgs=len(messages), unique_chats=len(final_data)
         )
 
         # 4. Send Report (if scheduled)
@@ -69,7 +67,9 @@ class ReportingService:
         final_data = await self._resolve_chat_titles(grouped_msgs)
         return final_data
 
-    async def _resolve_chat_titles(self, grouped_msgs: Dict[int, List[Message]]) -> Dict[str, List[Message]]:
+    async def _resolve_chat_titles(
+        self, grouped_msgs: Dict[int, List[Message]]
+    ) -> Dict[str, List[Message]]:
         """Resolves chat IDs to human-readable titles."""
         final_data = {}
         for chat_id, msgs in grouped_msgs.items():
@@ -133,7 +133,9 @@ class ReportingService:
 
         if not target_entity:
             try:
-                logger.info("REPORT_CHANNEL_ID invalid or missing. Falling back to 'Saved Messages'.")
+                logger.info(
+                    "REPORT_CHANNEL_ID invalid or missing. Falling back to 'Saved Messages'."
+                )
                 target_entity = await self.client.get_me()
             except Exception as e:
                 logger.error(f"Could not resolve 'me' for fallback report: {e}")

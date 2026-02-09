@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from backend.services.learning import LearningService
@@ -30,18 +31,27 @@ async def test_learning_service_ingest_history_batch_processing():
     service.client = mock_client
 
     # Mock internal methods
-    # We need to ensure _save_message_to_db is callable (it is)
-    # But it is called via asyncio.to_thread in _process_messages_ingestion
-
-    # We can patch _save_message_to_db to be a simple function that returns 1
-    # But to_thread takes the function, so we need to patch to_thread to execute it.
-
     with patch.object(service, "_save_message_to_db", return_value=1):
         with patch.object(service, "_analyze_and_extract", new_callable=AsyncMock) as mock_analyze:
 
-            with patch("asyncio.to_thread", new_callable=AsyncMock) as mock_to_thread:
-                # Mock to_thread to execute the function synchronously
-                mock_to_thread.side_effect = lambda func, *args: func(*args)
+            # Use MagicMock with a Future return value for asyncio.to_thread
+            # to avoid AsyncMock warning complexities.
+            with patch("asyncio.to_thread") as mock_to_thread:
+                f = asyncio.Future()
+                f.set_result(1)
+                mock_to_thread.return_value = f
+
+                # Handling side_effect if called multiple times or with different args?
+                # The test calls it 10 times. A single future might be reused if not careful,
+                # but awaiting a completed future multiple times is allowed.
+                # Ideally, side_effect should return a NEW future each time.
+
+                def to_thread_side_effect(func, *args, **kwargs):
+                    f = asyncio.Future()
+                    f.set_result(1)
+                    return f
+
+                mock_to_thread.side_effect = to_thread_side_effect
 
                 # We also need to patch asyncio.sleep to avoid waiting
                 with patch("asyncio.sleep", new_callable=AsyncMock):

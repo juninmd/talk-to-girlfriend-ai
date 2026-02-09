@@ -2,17 +2,20 @@ import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
 from backend.services.conversation import ConversationService
 
+
 @pytest.fixture
 def mock_client():
     client = MagicMock()
     client.send_message = AsyncMock()
     return client
 
+
 @pytest.fixture
 def service(mock_client):
     service = ConversationService()
     service.client = mock_client
     return service
+
 
 @pytest.mark.asyncio
 async def test_handle_commands_relatorio_global(service):
@@ -37,6 +40,7 @@ async def test_handle_commands_relatorio_global(service):
         # Check success message
         args2, _ = service.client.send_message.call_args_list[1]
         assert "Relatório global enviado!" in args2[1]
+
 
 @pytest.mark.asyncio
 async def test_handle_commands_relatorio_global_failure(service):
