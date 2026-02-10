@@ -96,6 +96,28 @@ Focus: Deep customization and user control.
     -   Natural-sounding voice generation with <3s latency.
 -   **Estimated Effort:** Medium.
 
+### 3. Image Analysis (Multimodal)
+-   **User Value:** Allows users to share visual moments (outfits, food, views) for a richer connection.
+-   **Technical Approach:**
+    -   Utilize Gemini 1.5 Flash's multimodal capabilities (text + image inputs).
+    -   Upon receiving an image, download it temporarily.
+    -   Send the image bytes alongside the user's caption to the API.
+-   **Success Criteria:**
+    -   Detailed and accurate description of the image content.
+    -   Relevant and engaging commentary (e.g., "That pizza looks delicious! Where is it from?").
+-   **Estimated Effort:** Medium.
+
+### 4. Smart Scheduling & Check-ins
+-   **User Value:** Makes the AI feel alive and caring by initiating contact, breaking the "only speaks when spoken to" bot paradigm.
+-   **Technical Approach:**
+    -   Implement a background scheduler (e.g., `APScheduler`) to trigger check-in jobs.
+    -   Develop heuristics based on the last interaction time and learned user schedule (e.g., "User usually wakes up at 8 AM").
+    -   Use the `AIService` to generate a context-aware greeting or question.
+-   **Success Criteria:**
+    -   AI sends a message after X hours of silence during active hours.
+    -   User responds positively to the initiated conversation >50% of the time.
+-   **Estimated Effort:** Medium.
+
 ## Dependencies & Risks
 
 -   **Google Gemini API:**
