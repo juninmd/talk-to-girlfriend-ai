@@ -204,3 +204,13 @@ two.png
 # Node
 node_modules/
 backend/database.db
+
+# Secrets
+.env.local
+.env.*.local
+*.key
+*.pem
+*.p12
+*.jks
+secrets/
+config/secrets.yml

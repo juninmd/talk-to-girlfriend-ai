@@ -49,3 +49,27 @@ jobs:
         # Just checking if it compiles/runs, since no tests were present before
         # If there are tests later, use bun test
         bun run build || true
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install security tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit pip-audit
+
+    - name: Run Bandit (SAST)
+      run: |
+        bandit -r backend/ -ll
+
+    - name: Run pip-audit (Dependency Check)
+      run: |
+        pip install -r requirements.txt
+        pip-audit
