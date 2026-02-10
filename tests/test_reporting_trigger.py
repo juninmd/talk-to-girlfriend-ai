@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, AsyncMock, patch
-from backend.services.conversation import ConversationService
+from backend.services.command import CommandService
 
 
 @pytest.fixture
@@ -12,19 +12,19 @@ def mock_client():
 
 @pytest.fixture
 def service(mock_client):
-    service = ConversationService()
-    service.client = mock_client
+    service = CommandService(mock_client)
     return service
 
 
 @pytest.mark.asyncio
 async def test_handle_commands_relatorio_global(service):
     """Test that /relatorio_global triggers reporting service with chat_id=None."""
-    with patch("backend.services.conversation.reporting_service") as mock_report:
+    # Patching where CommandService imports reporting_service
+    with patch("backend.services.command.reporting_service") as mock_report:
         # Simulate successful report generation (returns text)
         mock_report.generate_daily_report = AsyncMock(return_value="# Daily Report")
 
-        result = await service._handle_commands(123, "/relatorio_global")
+        result = await service.handle_command(123, "/relatorio_global")
 
         assert result is True
         # Verify it calls with chat_id=None (global mode)
@@ -45,11 +45,11 @@ async def test_handle_commands_relatorio_global(service):
 @pytest.mark.asyncio
 async def test_handle_commands_relatorio_global_failure(service):
     """Test that /relatorio_global handles empty report return (failure)."""
-    with patch("backend.services.conversation.reporting_service") as mock_report:
+    with patch("backend.services.command.reporting_service") as mock_report:
         # Simulate failure (returns None or empty string)
         mock_report.generate_daily_report = AsyncMock(return_value=None)
 
-        result = await service._handle_commands(123, "/relatorio_global")
+        result = await service.handle_command(123, "/relatorio_global")
 
         assert result is True
         mock_report.generate_daily_report.assert_called_once_with(chat_id=None)

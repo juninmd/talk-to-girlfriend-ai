@@ -98,3 +98,15 @@ async def test_summarize_conversations_success(ai_service):
 async def test_summarize_conversations_empty(ai_service):
     summary = await ai_service.summarize_conversations([])
     assert summary == "Sem dados para resumir."
+
+
+@pytest.mark.asyncio
+async def test_extract_facts_validation_failure(ai_service):
+    # Mock response with valid JSON but missing required fields
+    mock_response = MagicMock()
+    mock_response.text = '[{"entity": "Pizza", "category": "preference"}]'  # Missing 'value'
+    ai_service.client.aio.models.generate_content.return_value = mock_response
+
+    facts = await ai_service.extract_facts("I love pizza.")
+
+    assert len(facts) == 0  # Should be filtered out because validation failed

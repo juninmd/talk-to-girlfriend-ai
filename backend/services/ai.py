@@ -17,6 +17,7 @@ from backend.prompts import (
     CONVERSATION_SYSTEM_PROMPT,
 )
 from backend.utils import async_retry
+from backend.schemas import ExtractedFact
 
 logger = logging.getLogger(__name__)
 
@@ -77,20 +78,18 @@ class AIService:
             valid_facts = []
             if isinstance(facts, list):
                 for f in facts:
-                    if isinstance(f, dict) and f.get("entity") and f.get("value"):
-                        # Normalize keys
-                        entity = str(f["entity"]).strip()
-                        value = str(f["value"]).strip()
+                    try:
+                        # Validate with Pydantic
+                        if isinstance(f, dict):
+                            # Ensure defaults if missing (though Pydantic handles defaults, explicit dict manipulation helps if keys are messy)
+                            if "category" not in f:
+                                f["category"] = "general"
 
-                        if not entity or not value:
-                            continue
-
-                        if "category" not in f:
-                            f["category"] = "general"
-
-                        f["entity"] = entity
-                        f["value"] = value
-                        valid_facts.append(f)
+                            validated_fact = ExtractedFact(**f)
+                            valid_facts.append(validated_fact.model_dump())
+                    except Exception as e:
+                        logger.warning(f"Validation failed for fact {f}: {e}")
+                        continue
             else:
                 logger.warning(f"Extracted facts is not a list: {facts}")
 
