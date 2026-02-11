@@ -139,5 +139,6 @@ async def test_resolve_target_entity_with_int_id():
 
 def test_ai_context_fact_limit():
     from backend.settings import settings
+
     # We modified this to 5000
     assert settings.AI_CONTEXT_FACT_LIMIT == 5000
