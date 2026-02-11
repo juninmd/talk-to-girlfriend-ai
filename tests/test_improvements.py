@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch, AsyncMock
 from backend.services.learning import learning_service
 from telethon.tl.types import User
+from backend.services.reporting import ReportingService
 
 
 @pytest.mark.asyncio
@@ -86,3 +87,58 @@ async def test_ignore_generated_reports():
             mock_save.assert_called_once()
             # Verify extraction NOT called
             mock_extract.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_resolve_target_entity_with_string_id():
+    # Setup
+    service = ReportingService()
+    service.client = AsyncMock()
+
+    # Mock settings
+    with patch("backend.services.reporting.settings") as mock_settings:
+        mock_settings.REPORT_CHANNEL_ID = "-1001234567890"
+
+        # Mock client.get_entity to return a dummy entity when called with int
+        expected_id = -1001234567890
+        mock_entity = AsyncMock()
+        mock_entity.id = expected_id
+        service.client.get_entity.return_value = mock_entity
+
+        # Execute
+        result = await service._resolve_target_entity()
+
+        # Verify
+        # The key verification: verify get_entity was called with an INTEGER, not a string
+        service.client.get_entity.assert_called_with(expected_id)
+        assert result.id == expected_id
+
+
+@pytest.mark.asyncio
+async def test_resolve_target_entity_with_int_id():
+    # Setup
+    service = ReportingService()
+    service.client = AsyncMock()
+
+    # Mock settings
+    with patch("backend.services.reporting.settings") as mock_settings:
+        expected_id = -1009876543210
+        mock_settings.REPORT_CHANNEL_ID = expected_id
+
+        mock_entity = AsyncMock()
+        mock_entity.id = expected_id
+        service.client.get_entity.return_value = mock_entity
+
+        # Execute
+        result = await service._resolve_target_entity()
+
+        # Verify
+        service.client.get_entity.assert_called_with(expected_id)
+        assert result.id == expected_id
+
+
+def test_ai_context_fact_limit():
+    from backend.settings import settings
+
+    # We modified this to 5000
+    assert settings.AI_CONTEXT_FACT_LIMIT == 5000
