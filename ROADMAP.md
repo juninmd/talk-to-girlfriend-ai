@@ -13,9 +13,9 @@
 The project is currently a functional MVP (Minimum Viable Product) with the following capabilities:
 -   **Core Messaging:** Functional Telegram Userbot using `Telethon`.
 -   **AI Integration:** Integration with Google Gemini 1.5 Flash for natural language generation.
--   **Memory System:** Basic RAG (Retrieval-Augmented Generation) using SQLModel and keyword-based fact extraction.
--   **Daily Reporting:** Automated daily summaries of conversations and key facts.
--   **Command Interface:** Basic commands (`/fatos`, `/relatorio`, `/aprender`) for manual interaction.
+-   **Memory System:** Basic RAG (Retrieval-Augmented Generation) using SQLModel and keyword-based fact extraction via `LearningService`.
+-   **Daily Reporting:** Automated daily summaries of conversations and key facts via `ReportingService`.
+-   **Command Interface:** Commands like `/fatos`, `/relatorio`, `/aprender` for manual interaction.
 
 ## Quarterly Roadmap
 
