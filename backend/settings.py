@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # AI
     GOOGLE_API_KEY: Optional[str] = None
     AI_MODEL_NAME: str = "gemini-1.5-flash"
-    AI_CONTEXT_FACT_LIMIT: int = 1000
+    AI_CONTEXT_FACT_LIMIT: int = 5000
 
     # Conversation
     CONVERSATION_MIN_DELAY: float = 1.0

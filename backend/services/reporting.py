@@ -124,7 +124,15 @@ class ReportingService:
         target_entity = None
         if settings.REPORT_CHANNEL_ID:
             try:
-                target_entity = await self.client.get_entity(settings.REPORT_CHANNEL_ID)
+                # Telethon often requires int for IDs, even if env var is string
+                channel_id = settings.REPORT_CHANNEL_ID
+                if isinstance(channel_id, str) and channel_id.lstrip("-").isdigit():
+                    try:
+                        channel_id = int(channel_id)
+                    except ValueError:
+                        pass
+
+                target_entity = await self.client.get_entity(channel_id)
                 logger.info(f"Resolved REPORT_CHANNEL_ID to {target_entity.id}")
             except Exception as e:
                 logger.warning(

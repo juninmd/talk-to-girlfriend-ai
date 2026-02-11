@@ -2,6 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 from telethon import events
+from telethon.errors import FloodWaitError
 from sqlmodel import Session, select, func
 from backend.client import client
 from backend.database import engine, Message, Fact
@@ -51,8 +52,15 @@ class LearningService:
 
     async def _fetch_history_messages(self, entity, limit: int, min_id: int):
         """Fetches messages strictly newer than min_id."""
-        messages = await self.client.get_messages(entity, limit=limit, min_id=min_id)
-        return list(messages)
+        try:
+            messages = await self.client.get_messages(entity, limit=limit, min_id=min_id)
+            return list(messages)
+        except FloodWaitError as e:
+            logger.warning(f"FloodWaitError: Sleeping for {e.seconds} seconds.")
+            await asyncio.sleep(e.seconds)
+            # Retry once
+            messages = await self.client.get_messages(entity, limit=limit, min_id=min_id)
+            return list(messages)
 
     def _get_last_synced_id(self, chat_id: int) -> int:
         """Gets the last synced telegram_message_id for a chat."""
