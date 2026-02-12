@@ -3,7 +3,7 @@ import logging
 import asyncio
 import re
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 
 from google import genai
 from google.genai import types
@@ -64,16 +64,22 @@ class AIService:
             # 3. Clean up any remaining whitespace
             raw_text = raw_text.strip()
 
-            # Fix common JSON errors from LLMs (e.g. trailing commas)
-            # This is a basic attempt; for robust parsing, use a lenient parser if available.
-
             try:
                 facts = json.loads(raw_text)
-            except json.JSONDecodeError:
-                # Fallback: try to find the list again or repair simplistic errors?
-                # For now, let's just log and return empty, the retry decorator handles transient issues.
-                logger.warning(f"Failed to parse JSON: {raw_text[:100]}...")
-                return []
+            except json.JSONDecodeError as e:
+                logger.warning(
+                    f"Failed to parse JSON directly: {e}. Text: {raw_text[:100]}... Attempting repair."
+                )
+                # Simple repair for common trailing comma issue
+                if raw_text.endswith(",]"):
+                    raw_text = raw_text[:-2] + "]"
+                elif raw_text.endswith(","):
+                    raw_text = raw_text[:-1]
+
+                try:
+                    facts = json.loads(raw_text)
+                except json.JSONDecodeError:
+                    return []
 
             valid_facts = []
             if isinstance(facts, list):
@@ -81,7 +87,7 @@ class AIService:
                     try:
                         # Validate with Pydantic
                         if isinstance(f, dict):
-                            # Ensure defaults if missing (though Pydantic handles defaults, explicit dict manipulation helps if keys are messy)
+                            # Ensure defaults if missing
                             if "category" not in f:
                                 f["category"] = "general"
 
@@ -94,9 +100,6 @@ class AIService:
                 logger.warning(f"Extracted facts is not a list: {facts}")
 
             return valid_facts
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON Decode Error in extract_facts: {e}. Raw text: {raw_text}")
-            return []
         except Exception as e:
             logger.error(f"Error extracting facts: {e}")
             raise e
@@ -148,7 +151,7 @@ class AIService:
             logger.error(f"Error summarizing: {e}")
             raise e
 
-    def _get_context(self, chat_id: int):
+    def _get_context(self, chat_id: int) -> Tuple[List[Message], List[Fact]]:
         """Helper to fetch DB context synchronously."""
         with Session(engine) as session:
             # Get last 20 messages for better flow
@@ -161,7 +164,8 @@ class AIService:
             history = session.exec(statement).all()
             history = sorted(history, key=lambda x: x.date)  # sort back to chrono order
 
-            # Get relevant facts
+            # Get relevant facts filtered by chat_id
+            # TODO: Future improvement: Semantic search for relevant facts across all chats if needed
             facts = session.exec(
                 select(Fact)
                 .where(Fact.chat_id == chat_id)
