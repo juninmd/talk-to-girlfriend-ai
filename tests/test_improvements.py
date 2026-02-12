@@ -25,7 +25,9 @@ async def test_learning_from_outgoing_message():
         ) as mock_extract:
             with patch.object(learning_service, "_save_facts_to_db"):
                 # Mock _get_me to return a non-bot user so we proceed
-                with patch.object(learning_service, "_get_me", new_callable=AsyncMock) as mock_get_me:
+                with patch.object(
+                    learning_service, "_get_me", new_callable=AsyncMock
+                ) as mock_get_me:
                     mock_user = MagicMock()
                     mock_user.bot = False
                     mock_get_me.return_value = mock_user
@@ -35,7 +37,9 @@ async def test_learning_from_outgoing_message():
                     ]
 
                     # Capture the background task
-                    with patch("backend.services.learning.asyncio.create_task") as mock_create_task:
+                    with patch(
+                        "backend.services.learning.asyncio.create_task"
+                    ) as mock_create_task:
                         # Mock create_task to behave like a pass-through or return a dummy task,
                         # but we want to await the coroutine it received.
 
