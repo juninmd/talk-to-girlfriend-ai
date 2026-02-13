@@ -19,6 +19,14 @@ class CommandService:
         """
         text = text.strip()
 
+        if text.startswith("/start"):
+            await self._handle_start(chat_id)
+            return True
+
+        if text.startswith("/ajuda") or text.startswith("/help"):
+            await self._handle_help(chat_id)
+            return True
+
         if text.startswith("/aprender"):
             await self._handle_learn(chat_id, text)
             return True
@@ -36,6 +44,27 @@ class CommandService:
             return True
 
         return False
+
+    async def _handle_start(self, chat_id: int):
+        welcome_message = (
+            "👋 **Olá! Eu sou o Jules.**\n\n"
+            "Sou seu assistente pessoal com inteligência artificial.\n"
+            "Estou aqui para conversar, aprender sobre você e ajudar no dia a dia.\n\n"
+            "**O que eu posso fazer:**\n"
+            "🧠 **Aprender:** Leio o histórico para entender o contexto.\n"
+            "📊 **Relatórios:** Crio resumos diários das conversas.\n"
+            "💡 **Fatos:** Memorizo preferências e detalhes importantes.\n\n"
+            "**Comandos Disponíveis:**\n"
+            "/start ou /ajuda - Mostra esta mensagem.\n"
+            "/aprender [n] - Lê as últimas n mensagens.\n"
+            "/relatorio - Gera um resumo desta conversa.\n"
+            "/relatorio_global - Gera o relatório diário geral.\n"
+            "/fatos - Mostra o que eu sei sobre você."
+        )
+        await self.client.send_message(chat_id, welcome_message)
+
+    async def _handle_help(self, chat_id: int):
+        await self._handle_start(chat_id)
 
     async def _handle_learn(self, chat_id: int, text: str):
         parts = text.split()

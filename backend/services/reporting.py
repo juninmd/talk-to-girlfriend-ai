@@ -12,6 +12,8 @@ from backend.utils import async_retry, format_entity
 
 logger = logging.getLogger(__name__)
 
+MAX_REPORT_MESSAGES = 1000
+
 
 class ReportingService:
     def __init__(self):
@@ -92,6 +94,35 @@ class ReportingService:
 - **Total de Mensagens:** {total_msgs}
 - **Conversas Ativas:** {unique_chats}
 """.strip()
+
+        # Limit data to avoid huge context
+        if total_msgs > MAX_REPORT_MESSAGES:
+            logger.warning(
+                f"Too many messages ({total_msgs}), truncating to {MAX_REPORT_MESSAGES} for report."
+            )
+            # Flatten to (chat_title, msg)
+            all_items = []
+            for title, msgs in data.items():
+                for m in msgs:
+                    all_items.append((title, m))
+
+            # Sort by date descending (newest first)
+            all_items.sort(key=lambda x: x[1].date, reverse=True)
+
+            # Take top N
+            all_items = all_items[:MAX_REPORT_MESSAGES]
+
+            # Re-group (and sort back to chronological for the report)
+            all_items.sort(key=lambda x: x[1].date)
+
+            new_data = {}
+            for title, m in all_items:
+                if title not in new_data:
+                    new_data[title] = []
+                new_data[title].append(m)
+
+            data = new_data
+            stats_text += f"\n(Truncado para {MAX_REPORT_MESSAGES} mensagens recentes)"
 
         summary = await ai_service.summarize_conversations(data)
 
