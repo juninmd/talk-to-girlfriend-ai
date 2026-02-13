@@ -81,33 +81,34 @@ class AIService:
             try:
                 facts = json.loads(raw_text)
             except json.JSONDecodeError as e:
-                logger.warning(
-                    f"Failed to parse JSON: {e}. Text: {raw_text[:100]}..."
-                )
+                logger.warning(f"Failed to parse JSON: {e}. Text: {raw_text[:100]}...")
                 return []
 
-            valid_facts = []
-            if isinstance(facts, list):
-                for f in facts:
-                    try:
-                        # Validate with Pydantic
-                        if isinstance(f, dict):
-                            # Ensure defaults if missing
-                            if "category" not in f:
-                                f["category"] = "general"
+            return self._validate_facts(facts)
 
-                            validated_fact = ExtractedFact(**f)
-                            valid_facts.append(validated_fact.model_dump())
-                    except Exception as e:
-                        logger.warning(f"Validation failed for fact {f}: {e}")
-                        continue
-            else:
-                logger.warning(f"Extracted facts is not a list: {facts}")
-
-            return valid_facts
         except Exception as e:
             logger.error(f"Error extracting facts: {e}")
             raise e
+
+    def _validate_facts(self, facts: Any) -> List[Dict[str, Any]]:
+        """Validates and processes extracted facts."""
+        if not isinstance(facts, list):
+            logger.warning(f"Extracted facts is not a list: {facts}")
+            return []
+
+        valid_facts = []
+        for f in facts:
+            try:
+                if isinstance(f, dict):
+                    if "category" not in f:
+                        f["category"] = "general"
+
+                    validated_fact = ExtractedFact(**f)
+                    valid_facts.append(validated_fact.model_dump())
+            except Exception as e:
+                logger.warning(f"Validation failed for fact {f}: {e}")
+                continue
+        return valid_facts
 
     @async_retry(max_attempts=3, delay=2.0)
     async def summarize_conversations(self, data: Any) -> str:

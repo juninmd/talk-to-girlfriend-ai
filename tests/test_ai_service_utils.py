@@ -1,11 +1,12 @@
-import pytest
 from backend.services.ai import AIService
+
 
 def test_clean_json_response_clean():
     """Test cleaning already clean JSON."""
     raw = '[{"key": "value"}]'
     cleaned = AIService._clean_json_response(raw)
     assert cleaned == raw
+
 
 def test_clean_json_response_markdown_block():
     """Test cleaning JSON wrapped in markdown code block."""
@@ -14,6 +15,7 @@ def test_clean_json_response_markdown_block():
     cleaned = AIService._clean_json_response(raw)
     assert cleaned == expected
 
+
 def test_clean_json_response_markdown_block_no_lang():
     """Test cleaning JSON wrapped in markdown code block without language."""
     raw = '```\n[{"key": "value"}]\n```'
@@ -21,12 +23,14 @@ def test_clean_json_response_markdown_block_no_lang():
     cleaned = AIService._clean_json_response(raw)
     assert cleaned == expected
 
+
 def test_clean_json_response_trailing_comma():
     """Test cleaning JSON with trailing comma in array."""
     raw = '[{"key": "value"},]'
     expected = '[{"key": "value"}]'
     cleaned = AIService._clean_json_response(raw)
     assert cleaned == expected
+
 
 def test_clean_json_response_nested_trailing_comma():
     """Test cleaning JSON with trailing comma inside object (simple case)."""
@@ -46,6 +50,7 @@ def test_clean_json_response_nested_trailing_comma():
     expected = '[{"a": 1}]'
     cleaned = AIService._clean_json_response(raw)
     assert cleaned == expected
+
 
 def test_clean_json_response_extra_text():
     """Test cleaning JSON with extra text outside."""
