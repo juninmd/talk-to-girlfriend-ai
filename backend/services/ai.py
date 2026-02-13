@@ -30,6 +30,34 @@ class AIService:
         else:
             logger.warning("GOOGLE_API_KEY not set. AI features disabled.")
 
+    @staticmethod
+    def _clean_json_response(raw_text: str) -> str:
+        """Cleans LLM response to extract valid JSON."""
+        raw_text = raw_text.strip()
+
+        # 1. Try to extract from code block first
+        code_block_pattern = r"```(?:json)?\s*(.*?)```"
+        match = re.search(code_block_pattern, raw_text, re.DOTALL)
+        if match:
+            raw_text = match.group(1).strip()
+
+        # 2. Ensure we have the list structure [ ... ]
+        # Check if we have brackets
+        match_array = re.search(r"\[.*\]", raw_text, re.DOTALL)
+        if match_array:
+            raw_text = match_array.group(0)
+
+        # 3. Clean up any remaining whitespace
+        raw_text = raw_text.strip()
+
+        # 4. Simple repair for common trailing comma issue
+        if raw_text.endswith(",]"):
+            raw_text = raw_text[:-2] + "]"
+        elif raw_text.endswith(","):
+            raw_text = raw_text[:-1]
+
+        return raw_text
+
     @async_retry(max_attempts=3, delay=1.0)
     async def extract_facts(self, text: str) -> List[Dict[str, Any]]:
         """
@@ -48,61 +76,39 @@ class AIService:
                 contents=prompt,
                 config=types.GenerateContentConfig(response_mime_type="application/json"),
             )
-            raw_text = response.text.strip()
-
-            # 1. Try to extract from code block first
-            code_block_pattern = r"```(?:json)?\s*(.*?)```"
-            match = re.search(code_block_pattern, raw_text, re.DOTALL)
-            if match:
-                raw_text = match.group(1).strip()
-
-            # 2. Ensure we have the list structure [ ... ]
-            match_array = re.search(r"\[.*\]", raw_text, re.DOTALL)
-            if match_array:
-                raw_text = match_array.group(0)
-
-            # 3. Clean up any remaining whitespace
-            raw_text = raw_text.strip()
+            raw_text = self._clean_json_response(response.text)
 
             try:
                 facts = json.loads(raw_text)
             except json.JSONDecodeError as e:
-                logger.warning(
-                    f"Failed to parse JSON directly: {e}. Text: {raw_text[:100]}... Attempting repair."
-                )
-                # Simple repair for common trailing comma issue
-                if raw_text.endswith(",]"):
-                    raw_text = raw_text[:-2] + "]"
-                elif raw_text.endswith(","):
-                    raw_text = raw_text[:-1]
+                logger.warning(f"Failed to parse JSON: {e}. Text: {raw_text[:100]}...")
+                return []
 
-                try:
-                    facts = json.loads(raw_text)
-                except json.JSONDecodeError:
-                    return []
+            return self._validate_facts(facts)
 
-            valid_facts = []
-            if isinstance(facts, list):
-                for f in facts:
-                    try:
-                        # Validate with Pydantic
-                        if isinstance(f, dict):
-                            # Ensure defaults if missing
-                            if "category" not in f:
-                                f["category"] = "general"
-
-                            validated_fact = ExtractedFact(**f)
-                            valid_facts.append(validated_fact.model_dump())
-                    except Exception as e:
-                        logger.warning(f"Validation failed for fact {f}: {e}")
-                        continue
-            else:
-                logger.warning(f"Extracted facts is not a list: {facts}")
-
-            return valid_facts
         except Exception as e:
             logger.error(f"Error extracting facts: {e}")
             raise e
+
+    def _validate_facts(self, facts: Any) -> List[Dict[str, Any]]:
+        """Validates and processes extracted facts."""
+        if not isinstance(facts, list):
+            logger.warning(f"Extracted facts is not a list: {facts}")
+            return []
+
+        valid_facts = []
+        for f in facts:
+            try:
+                if isinstance(f, dict):
+                    if "category" not in f:
+                        f["category"] = "general"
+
+                    validated_fact = ExtractedFact(**f)
+                    valid_facts.append(validated_fact.model_dump())
+            except Exception as e:
+                logger.warning(f"Validation failed for fact {f}: {e}")
+                continue
+        return valid_facts
 
     @async_retry(max_attempts=3, delay=2.0)
     async def summarize_conversations(self, data: Any) -> str:
