@@ -18,6 +18,7 @@ MAX_REPORT_MESSAGES = 1000
 class ReportingService:
     def __init__(self):
         self.client = client
+        self._title_cache: Dict[int, str] = {}
 
     @async_retry(max_attempts=3, delay=5.0)
     async def generate_daily_report(self, chat_id: int = None) -> str:
@@ -76,13 +77,18 @@ class ReportingService:
         final_data = {}
         for chat_id, msgs in grouped_msgs.items():
             title = f"Chat {chat_id}"
-            try:
-                # Optimized: We could cache this or batch fetch, but for now robust error handling is key.
-                entity = await self.client.get_entity(chat_id)
-                formatted = format_entity(entity)
-                title = formatted.get("name", title)
-            except Exception as e:
-                logger.warning(f"Could not resolve title for chat {chat_id}: {e}")
+
+            # Check cache first
+            if chat_id in self._title_cache:
+                title = self._title_cache[chat_id]
+            else:
+                try:
+                    entity = await self.client.get_entity(chat_id)
+                    formatted = format_entity(entity)
+                    title = formatted.get("name", title)
+                    self._title_cache[chat_id] = title
+                except Exception as e:
+                    logger.warning(f"Could not resolve title for chat {chat_id}: {e}")
 
             unique_key = f"{title} (ID: {chat_id})"
             final_data[unique_key] = msgs
@@ -157,10 +163,13 @@ class ReportingService:
         if settings.REPORT_CHANNEL_ID:
             try:
                 channel_id = settings.REPORT_CHANNEL_ID
-                # Handle numeric string IDs
+                # Handle numeric string IDs robustly
                 if isinstance(channel_id, str):
-                    if channel_id.lstrip("-").isdigit():
+                    channel_id = channel_id.strip()
+                    try:
                         channel_id = int(channel_id)
+                    except ValueError:
+                        pass  # Keep as string (username) if not int
 
                 target_entity = await self.client.get_entity(channel_id)
                 logger.info(f"Resolved REPORT_CHANNEL_ID to {target_entity.id}")
