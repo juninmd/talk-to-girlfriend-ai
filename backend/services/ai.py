@@ -37,7 +37,7 @@ class AIService:
 
         # 1. Try to extract from code block first
         code_block_pattern = r"```(?:json)?\s*(.*?)```"
-        match = re.search(code_block_pattern, raw_text, re.DOTALL)
+        match = re.search(code_block_pattern, raw_text, re.DOTALL | re.IGNORECASE)
         if match:
             raw_text = match.group(1).strip()
 

@@ -243,7 +243,9 @@ class LearningService:
         try:
             await self._analyze_and_extract(text, source_msg_id, chat_id)
         except Exception as e:
-            logger.error(f"Failed to process message {source_msg_id} for learning: {e}")
+            logger.error(
+                f"Failed to process message {source_msg_id} for learning: {e}", exc_info=True
+            )
 
 
 learning_service = LearningService()
