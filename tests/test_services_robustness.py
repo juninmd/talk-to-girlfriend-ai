@@ -5,6 +5,7 @@ from backend.services.reporting import ReportingService
 from backend.services.ai import AIService
 from telethon.tl.types import User
 
+
 @pytest.mark.asyncio
 async def test_learning_from_outgoing_message_robust():
     """Verify that outgoing messages trigger fact extraction correctly."""
@@ -12,7 +13,7 @@ async def test_learning_from_outgoing_message_robust():
 
     # Mock dependencies
     service.client = MagicMock()
-    service._me = None # Reset me
+    service._me = None  # Reset me
 
     mock_event = MagicMock()
     mock_event.chat_id = 123
@@ -23,9 +24,9 @@ async def test_learning_from_outgoing_message_robust():
     mock_event.message.out = True  # OUTGOING
     mock_event.sender = User(id=456, first_name="Me", last_name="Myself")
 
-    with patch.object(service, "_save_message_to_db", return_value=999) as mock_save:
+    with patch.object(service, "_save_message_to_db", return_value=999):
         with patch.object(service, "_analyze_and_extract", new_callable=AsyncMock) as mock_extract:
-             # Mock _get_me to return a user (not bot)
+            # Mock _get_me to return a user (not bot)
             with patch.object(service, "_get_me", new_callable=AsyncMock) as mock_get_me:
                 mock_user = MagicMock()
                 mock_user.bot = False
@@ -35,9 +36,11 @@ async def test_learning_from_outgoing_message_robust():
                 with patch("asyncio.create_task") as mock_create_task:
                     # Capture the coroutine
                     captured_coros = []
+
                     def side_effect(coro):
                         captured_coros.append(coro)
                         return MagicMock()
+
                     mock_create_task.side_effect = side_effect
 
                     await service.handle_message_learning(mock_event)
@@ -104,16 +107,16 @@ async def test_ai_json_cleaning_robustness():
     # Let's verify _clean_json_response behavior
 
     # Case: Markdown JSON (uppercase)
-    text = "```JSON\n[{\"a\": 1}]\n```"
+    text = '```JSON\n[{"a": 1}]\n```'
     cleaned = service._clean_json_response(text)
-    assert cleaned == "[{\"a\": 1}]"
+    assert cleaned == '[{"a": 1}]'
 
     # Case: Markdown without type
-    text = "```\n[{\"a\": 1}]\n```"
+    text = '```\n[{"a": 1}]\n```'
     cleaned = service._clean_json_response(text)
-    assert cleaned == "[{\"a\": 1}]"
+    assert cleaned == '[{"a": 1}]'
 
     # Case: Trailing comma in list
-    text = "[{\"a\": 1},]"
+    text = '[{"a": 1},]'
     cleaned = service._clean_json_response(text)
-    assert cleaned == "[{\"a\": 1}]"
+    assert cleaned == '[{"a": 1}]'
