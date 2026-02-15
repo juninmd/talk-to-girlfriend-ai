@@ -166,6 +166,9 @@ class ReportingService:
                 # Handle numeric string IDs robustly
                 if isinstance(channel_id, str):
                     channel_id = channel_id.strip()
+                    # If it's empty string, treat as invalid
+                    if not channel_id:
+                        raise ValueError("Empty REPORT_CHANNEL_ID")
                     try:
                         channel_id = int(channel_id)
                     except ValueError:

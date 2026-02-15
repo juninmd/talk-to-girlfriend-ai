@@ -36,6 +36,7 @@ class AIService:
         raw_text = raw_text.strip()
 
         # 1. Try to extract from code block first
+        # Match ```json (case-insensitive) or just ```
         code_block_pattern = r"```(?:json)?\s*(.*?)```"
         match = re.search(code_block_pattern, raw_text, re.DOTALL | re.IGNORECASE)
         if match:

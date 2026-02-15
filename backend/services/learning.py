@@ -218,7 +218,9 @@ class LearningService:
                 if text.startswith(REPORT_PREFIXES):
                     return
 
-                # If we are a bot, never learn from our own outgoing messages
+                # If we are a bot (Bot API), never learn from our own outgoing messages (replies).
+                # If we are a Userbot (me.bot=False), we DO learn from our outgoing messages
+                # because they represent the user's voice/facts.
                 me = await self._get_me()
                 if me and me.bot and is_outgoing:
                     return
