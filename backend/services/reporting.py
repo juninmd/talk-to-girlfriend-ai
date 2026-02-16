@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from sqlmodel import Session, select
 from backend.database import engine, Message
@@ -16,18 +16,28 @@ MAX_REPORT_MESSAGES = 1000
 
 
 class ReportingService:
+    """
+    Service responsible for generating and delivering daily activity reports.
+    """
+
     def __init__(self):
         self.client = client
         self._title_cache: Dict[int, str] = {}
 
     @async_retry(max_attempts=3, delay=5.0)
-    async def generate_daily_report(self, chat_id: int = None) -> str:
+    async def generate_daily_report(self, chat_id: Optional[int] = None) -> str:
         """
         Generates a summary of all conversations from the last 24 hours.
-        If chat_id is None (scheduled), it sends the report to the configured channel.
-        If chat_id is provided (manual), it returns the report text.
+
+        Args:
+            chat_id: If provided, generates report only for this chat and returns text.
+                     If None (default), generates global report and sends to configured channel.
+
+        Returns:
+            The generated report text.
         """
-        logger.info(f"Generating daily report (Specific Chat: {chat_id})...")
+        report_scope = f"Specific Chat: {chat_id}" if chat_id else "Global Report"
+        logger.info(f"Generating daily report ({report_scope})...")
 
         # 1. Fetch messages
         messages = await asyncio.to_thread(self._fetch_messages_for_report, chat_id)
@@ -43,13 +53,13 @@ class ReportingService:
             final_data, total_msgs=len(messages), unique_chats=len(final_data)
         )
 
-        # 4. Send Report (if scheduled)
+        # 4. Send Report (if scheduled/global)
         if not chat_id:
             await self._send_report(report_text)
 
         return report_text
 
-    def _fetch_messages_for_report(self, chat_id: int = None) -> List[Message]:
+    def _fetch_messages_for_report(self, chat_id: Optional[int] = None) -> List[Message]:
         """Fetches messages in a thread from the last 24 hours (UTC)."""
         cutoff = datetime.now(timezone.utc) - timedelta(days=1)
         with Session(engine) as session:
@@ -57,11 +67,11 @@ class ReportingService:
             if chat_id:
                 statement = statement.where(Message.chat_id == chat_id)
             messages = session.exec(statement).all()
-            return messages
+            return list(messages)
 
     async def _prepare_data_for_ai(self, messages: List[Message]) -> Dict[str, List[Message]]:
         """Groups messages by chat and resolves chat titles."""
-        grouped_msgs = {}
+        grouped_msgs: Dict[int, List[Message]] = {}
         for m in messages:
             if m.chat_id not in grouped_msgs:
                 grouped_msgs[m.chat_id] = []
@@ -94,7 +104,9 @@ class ReportingService:
             final_data[unique_key] = msgs
         return final_data
 
-    async def _generate_report_content(self, data: Any, total_msgs: int, unique_chats: int) -> str:
+    async def _generate_report_content(
+        self, data: Dict[str, List[Message]], total_msgs: int, unique_chats: int
+    ) -> str:
         """Calls AI to summarize and formats the final report."""
         stats_text = f"""
 - **Total de Mensagens:** {total_msgs}
@@ -121,7 +133,7 @@ class ReportingService:
             # Re-group (and sort back to chronological for the report)
             all_items.sort(key=lambda x: x[1].date)
 
-            new_data = {}
+            new_data: Dict[str, List[Message]] = {}
             for title, m in all_items:
                 if title not in new_data:
                     new_data[title] = []
@@ -157,35 +169,46 @@ class ReportingService:
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")
 
-    async def _resolve_target_entity(self):
-        """Resolves the target entity for the report (Channel or Saved Messages)."""
+    async def _resolve_target_entity(self) -> Any:
+        """
+        Resolves the target entity for the report.
+        Priority:
+        1. Configured REPORT_CHANNEL_ID (if valid).
+        2. Fallback to 'Saved Messages' (me).
+        """
         target_entity = None
-        if settings.REPORT_CHANNEL_ID:
+        channel_id = settings.REPORT_CHANNEL_ID
+
+        if channel_id:
             try:
-                channel_id = settings.REPORT_CHANNEL_ID
-                # Handle numeric string IDs robustly
+                # Validate and Normalize ID
                 if isinstance(channel_id, str):
                     channel_id = channel_id.strip()
-                    # If it's empty string, treat as invalid
                     if not channel_id:
-                        raise ValueError("Empty REPORT_CHANNEL_ID")
+                        raise ValueError("Empty REPORT_CHANNEL_ID string.")
+                    # Try to convert to int if it looks like one (e.g. "-100...")
                     try:
                         channel_id = int(channel_id)
                     except ValueError:
-                        pass  # Keep as string (username) if not int
+                        pass  # It's a username or invite link
 
+                # Fetch Entity
                 target_entity = await self.client.get_entity(channel_id)
-                logger.info(f"Resolved REPORT_CHANNEL_ID to {target_entity.id}")
+                # Log success with entity name if available
+                entity_name = format_entity(target_entity).get("name", "Unknown")
+                logger.info(f"Resolved REPORT_CHANNEL_ID to {target_entity.id} ({entity_name})")
+
             except Exception as e:
                 logger.warning(
                     f"Could not resolve configured REPORT_CHANNEL_ID ({settings.REPORT_CHANNEL_ID}): {e}"
                 )
+                target_entity = None
 
         if not target_entity:
+            logger.warning(
+                "REPORT_CHANNEL_ID invalid or missing. Falling back to 'Saved Messages'."
+            )
             try:
-                logger.info(
-                    "REPORT_CHANNEL_ID invalid or missing. Falling back to 'Saved Messages'."
-                )
                 target_entity = await self.client.get_me()
             except Exception as e:
                 logger.error(f"Could not resolve 'me' for fallback report: {e}")
