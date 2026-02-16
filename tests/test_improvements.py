@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, AsyncMock, patch
 from backend.services.ai import AIService
 from backend.services.reporting import ReportingService
 
+
 @pytest.mark.asyncio
 async def test_ai_service_prompt_formatting_robustness():
     """

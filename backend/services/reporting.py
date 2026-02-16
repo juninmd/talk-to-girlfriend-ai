@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 
 from sqlmodel import Session, select
 from backend.database import engine, Message
@@ -195,7 +195,7 @@ class ReportingService:
                 # Fetch Entity
                 target_entity = await self.client.get_entity(channel_id)
                 # Log success with entity name if available
-                entity_name = format_entity(target_entity).get('name', 'Unknown')
+                entity_name = format_entity(target_entity).get("name", "Unknown")
                 logger.info(f"Resolved REPORT_CHANNEL_ID to {target_entity.id} ({entity_name})")
 
             except Exception as e:
@@ -205,7 +205,9 @@ class ReportingService:
                 target_entity = None
 
         if not target_entity:
-            logger.warning("REPORT_CHANNEL_ID invalid or missing. Falling back to 'Saved Messages'.")
+            logger.warning(
+                "REPORT_CHANNEL_ID invalid or missing. Falling back to 'Saved Messages'."
+            )
             try:
                 target_entity = await self.client.get_me()
             except Exception as e:
