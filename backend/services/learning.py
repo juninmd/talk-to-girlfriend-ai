@@ -17,6 +17,10 @@ REPORT_PREFIXES = ("# 📅 Relatório Diário", "# 📅 Relatório")
 
 
 class LearningService:
+    """
+    Service responsible for ingesting chat history and extracting facts (learning).
+    """
+
     def __init__(self):
         self.client = client
         self._me = None
@@ -46,21 +50,27 @@ class LearningService:
             relevant_msgs = self._filter_relevant_messages(messages)
             await self._process_learning_batch(chat_id, relevant_msgs)
 
-            msg = f"Ingested {count} messages. Analyzed {len(relevant_msgs)} for facts."
+            if count == 0:
+                msg = "No new messages found to ingest."
+            else:
+                msg = f"Ingested {count} new messages. Analyzed {len(relevant_msgs)} for facts."
+
             logger.info(f"Chat {chat_id}: {msg}")
             return msg
         except Exception as e:
             logger.error(f"Error ingesting history: {e}")
             return f"Error: {str(e)}"
 
-    async def _fetch_history_messages(self, entity, limit: int, min_id: int):
+    async def _fetch_history_messages(self, entity: Any, limit: int, min_id: int) -> List[Any]:
         """
         Fetches messages strictly newer than min_id with retry logic for FloodWaitError.
+        Returns a list of Telethon Message objects.
         """
         attempts = 0
         max_attempts = 3
         while attempts < max_attempts:
             try:
+                # Telethon get_messages returns an iterator-like object, need to list() it
                 messages = await self.client.get_messages(entity, limit=limit, min_id=min_id)
                 return list(messages)
             except FloodWaitError as e:
@@ -76,7 +86,7 @@ class LearningService:
         return []
 
     def _get_last_synced_id(self, chat_id: int) -> int:
-        """Gets the last synced telegram_message_id for a chat."""
+        """Gets the last synced telegram_message_id for a chat from the DB."""
         with Session(engine) as session:
             statement = select(func.max(Message.telegram_message_id)).where(
                 Message.chat_id == chat_id
@@ -89,7 +99,7 @@ class LearningService:
                 return result
         return 0
 
-    def _create_message_data(self, msg, chat_id: int) -> Dict[str, Any]:
+    def _create_message_data(self, msg: Any, chat_id: int) -> Dict[str, Any]:
         """Helper to create message data dict from Telethon message."""
         sender_name = get_sender_name(msg)
         if sender_name == "Unknown":
@@ -105,7 +115,7 @@ class LearningService:
             "is_outgoing": msg.out,
         }
 
-    async def _process_messages_ingestion(self, chat_id: int, messages_list: list) -> int:
+    async def _process_messages_ingestion(self, chat_id: int, messages_list: List[Any]) -> int:
         """Saves messages to DB and returns count of new messages."""
         count = 0
         # Process oldest first for logical order in DB
@@ -120,8 +130,8 @@ class LearningService:
                 count += 1
         return count
 
-    def _filter_relevant_messages(self, messages_list: list) -> list:
-        """Filters messages relevant for learning."""
+    def _filter_relevant_messages(self, messages_list: List[Any]) -> List[Any]:
+        """Filters messages relevant for learning (text length, not reports)."""
         return [
             m
             for m in messages_list
@@ -130,8 +140,8 @@ class LearningService:
             and not m.message.startswith(REPORT_PREFIXES)
         ]
 
-    async def _process_learning_batch(self, chat_id: int, relevant_msgs: list):
-        """Processes learning in batches."""
+    async def _process_learning_batch(self, chat_id: int, relevant_msgs: List[Any]):
+        """Processes learning (fact extraction) in batches to avoid rate limits."""
         batch_size = settings.LEARNING_BATCH_SIZE
         total_batches = (len(relevant_msgs) + batch_size - 1) // batch_size
 
@@ -156,7 +166,7 @@ class LearningService:
         self.client.add_event_handler(self.handle_message_learning, events.NewMessage)
 
     async def _save_message_to_db(self, msg_data: Dict[str, Any]) -> Optional[int]:
-        """Runs synchronous DB save in a thread."""
+        """Runs synchronous DB save in a thread. Returns DB ID if saved, None if error/duplicate."""
         try:
             with Session(engine) as session:
                 # Check for duplicate
@@ -181,7 +191,7 @@ class LearningService:
     async def _save_facts_to_db(
         self, facts: List[Dict[str, Any]], source_msg_id: int, chat_id: int
     ):
-        """Runs synchronous DB save in a thread."""
+        """Runs synchronous DB save of facts in a thread."""
         try:
             with Session(engine) as session:
                 for fact_data in facts:
@@ -197,7 +207,7 @@ class LearningService:
         except Exception as e:
             logger.error(f"DB Error saving facts: {e}")
 
-    async def handle_message_learning(self, event):
+    async def handle_message_learning(self, event: events.NewMessage.Event):
         """
         Intercepts new messages (incoming and outgoing), saves them to DB,
         and triggers AI analysis for fact extraction.

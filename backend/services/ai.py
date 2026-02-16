@@ -3,7 +3,7 @@ import logging
 import asyncio
 import re
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 
 from google import genai
 from google.genai import types
@@ -23,8 +23,15 @@ logger = logging.getLogger(__name__)
 
 
 class AIService:
+    """
+    Service responsible for interacting with the Google GenAI API for:
+    - Fact Extraction (Memory)
+    - Conversation Summarization (Reporting)
+    - Natural Language Generation (Chat)
+    """
+
     def __init__(self):
-        self.client = None
+        self.client: Optional[genai.Client] = None
         if settings.GOOGLE_API_KEY:
             self.client = genai.Client(api_key=settings.GOOGLE_API_KEY)
         else:
@@ -32,18 +39,19 @@ class AIService:
 
     @staticmethod
     def _clean_json_response(raw_text: str) -> str:
-        """Cleans LLM response to extract valid JSON."""
+        """
+        Cleans LLM response to extract valid JSON string.
+        Handles Markdown code blocks and trailing commas.
+        """
         raw_text = raw_text.strip()
 
         # 1. Try to extract from code block first
-        # Match ```json (case-insensitive) or just ```
         code_block_pattern = r"```(?:json)?\s*(.*?)```"
         match = re.search(code_block_pattern, raw_text, re.DOTALL | re.IGNORECASE)
         if match:
             raw_text = match.group(1).strip()
 
         # 2. Ensure we have the list structure [ ... ]
-        # Check if we have brackets
         match_array = re.search(r"\[.*\]", raw_text, re.DOTALL)
         if match_array:
             raw_text = match_array.group(0)
@@ -63,15 +71,19 @@ class AIService:
     async def extract_facts(self, text: str) -> List[Dict[str, Any]]:
         """
         Uses LLM to extract facts from text.
-        Returns a list of dicts: {'entity': str, 'value': str, 'category': str}
+        Returns a list of dicts conforming to ExtractedFact schema.
         """
         if not self.client:
             return []
 
-        prompt = FACT_EXTRACTION_PROMPT.format(text=text)
+        # Safe formatting
+        try:
+            prompt = FACT_EXTRACTION_PROMPT.format(text=text)
+        except Exception as e:
+            logger.error(f"Error formatting prompt for fact extraction: {e}")
+            return []
 
         try:
-            # Request JSON output directly
             response = await self.client.aio.models.generate_content(
                 model=settings.AI_MODEL_NAME,
                 contents=prompt,
@@ -92,7 +104,7 @@ class AIService:
             raise e
 
     def _validate_facts(self, facts: Any) -> List[Dict[str, Any]]:
-        """Validates and processes extracted facts."""
+        """Validates and processes extracted facts against ExtractedFact schema."""
         if not isinstance(facts, list):
             logger.warning(f"Extracted facts is not a list: {facts}")
             return []
@@ -116,7 +128,7 @@ class AIService:
         """
         Summarizes conversations.
         Accepts:
-        - List[Message]: Flat list of messages (backward compatibility)
+        - List[Message]: Flat list of messages
         - Dict[str, List[Message]]: Grouped by chat identifier
         """
         if not self.client or not data:
@@ -125,7 +137,6 @@ class AIService:
         text_log = ""
 
         if isinstance(data, list) and all(isinstance(m, Message) for m in data):
-            # Flat list
             text_log = "\n".join(
                 [
                     f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}"
@@ -133,7 +144,6 @@ class AIService:
                 ]
             )
         elif isinstance(data, dict):
-            # Grouped dict
             chunks = []
             for chat_name, msgs in data.items():
                 chunks.append(f"--- Chat: {chat_name} ---")
@@ -141,14 +151,13 @@ class AIService:
                     chunks.append(
                         f"[{m.date.strftime('%H:%M')}] {m.sender_name or 'Desconhecido'}: {m.text}"
                     )
-                chunks.append("")  # Empty line
+                chunks.append("")
             text_log = "\n".join(chunks)
         else:
             return "Formato de dados inválido para resumo."
 
-        prompt = SUMMARY_PROMPT.format(text_log=text_log)
-
         try:
+            prompt = SUMMARY_PROMPT.format(text_log=text_log)
             response = await self.client.aio.models.generate_content(
                 model=settings.AI_MODEL_NAME,
                 contents=prompt,
@@ -169,10 +178,8 @@ class AIService:
                 .limit(20)
             )
             history = session.exec(statement).all()
-            history = sorted(history, key=lambda x: x.date)  # sort back to chrono order
+            history = sorted(history, key=lambda x: x.date)
 
-            # Get relevant facts filtered by chat_id
-            # TODO: Future improvement: Semantic search for relevant facts across all chats if needed
             facts = session.exec(
                 select(Fact)
                 .where(Fact.chat_id == chat_id)
@@ -184,7 +191,6 @@ class AIService:
     def _format_relative_time(self, dt: datetime) -> str:
         """Helper to format datetime relatively (e.g. Today 14:00, Yesterday 10:00)."""
         now = datetime.now(timezone.utc)
-        # Ensure dt is aware
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
 
@@ -195,7 +201,7 @@ class AIService:
         elif diff.days == 1:
             day_str = "Ontem"
         elif diff.days < 7:
-            day_str = dt.strftime("%A")  # Day name
+            day_str = dt.strftime("%A")
         else:
             day_str = dt.strftime("%d/%m")
 
@@ -207,6 +213,7 @@ class AIService:
     ) -> str:
         """
         Generates a natural response using history and facts.
+        Includes safety check for prompt formatting.
         """
         if not self.client:
             return "Desculpe, minha IA não está configurada."
@@ -223,12 +230,16 @@ class AIService:
         )
         facts_text = "\n".join([f"- {f.entity_name} ({f.category}): {f.value}" for f in facts])
 
-        # Inject sender name into the message context
         full_user_message = f"User {sender_name} says: {user_message}"
 
-        prompt = CONVERSATION_SYSTEM_PROMPT.format(
-            facts_text=facts_text, history_text=history_text, user_message=full_user_message
-        )
+        try:
+            prompt = CONVERSATION_SYSTEM_PROMPT.format(
+                facts_text=facts_text, history_text=history_text, user_message=full_user_message
+            )
+        except Exception as e:
+            logger.error(f"Error formatting conversation prompt: {e}")
+            # Fallback prompt if formatting fails
+            prompt = f"System: Error in context. User says: {user_message}"
 
         try:
             response = await self.client.aio.models.generate_content(

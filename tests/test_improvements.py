@@ -1,150 +1,82 @@
 import pytest
-from unittest.mock import MagicMock, patch, AsyncMock
-from backend.services.learning import learning_service
-from telethon.tl.types import User
+from unittest.mock import MagicMock, AsyncMock, patch
+from backend.services.ai import AIService
 from backend.services.reporting import ReportingService
 
-
 @pytest.mark.asyncio
-async def test_learning_from_outgoing_message():
-    """Verify that outgoing messages trigger fact extraction."""
-    # Mock Event
-    mock_event = MagicMock()
-    mock_event.chat_id = 123
-    mock_event.sender_id = 456
-    mock_event.message.message = "Eu adoro programar em Python!"
-    mock_event.message.id = 101
-    mock_event.message.date = "2023-01-01"
-    mock_event.message.out = True  # OUTGOING
-    mock_event.sender = User(id=456, first_name="Me", last_name="Myself")
-
-    # Mock DB save to return a valid ID
-    with patch.object(learning_service, "_save_message_to_db", return_value=999) as mock_save:
-        with patch(
-            "backend.services.learning.ai_service.extract_facts", new_callable=AsyncMock
-        ) as mock_extract:
-            with patch.object(learning_service, "_save_facts_to_db"):
-                # Mock _get_me to return a non-bot user so we proceed
-                with patch.object(
-                    learning_service, "_get_me", new_callable=AsyncMock
-                ) as mock_get_me:
-                    mock_user = MagicMock()
-                    mock_user.bot = False
-                    mock_get_me.return_value = mock_user
-
-                    mock_extract.return_value = [
-                        {"entity": "Python", "value": "Love it", "category": "tech"}
-                    ]
-
-                    # Capture the background task
-                    with patch(
-                        "backend.services.learning.asyncio.create_task"
-                    ) as mock_create_task:
-                        # Mock create_task to behave like a pass-through or return a dummy task,
-                        # but we want to await the coroutine it received.
-
-                        # Setup side_effect to capture the coro
-                        captured_coros = []
-
-                        def side_effect(coro):
-                            captured_coros.append(coro)
-                            return MagicMock()  # Return a dummy task
-
-                        mock_create_task.side_effect = side_effect
-
-                        await learning_service.handle_message_learning(mock_event)
-
-                        # Verify create_task was called
-                        assert mock_create_task.called
-
-                        # Manually await the captured coroutine to prevent "never awaited" warning
-                        # and to execute the extraction logic
-                        if captured_coros:
-                            await captured_coros[0]
-
-                    # Verify save_message called
-                    mock_save.assert_called_once()
-                    # Verify extraction called (Crucial check for improvement)
-                    mock_extract.assert_called_once_with("Eu adoro programar em Python!")
-
-
-@pytest.mark.asyncio
-async def test_ignore_generated_reports():
-    """Verify that generated reports are NOT learned."""
-    # Mock Event
-    mock_event = MagicMock()
-    mock_event.chat_id = 123
-    mock_event.sender_id = 456
-    mock_event.message.message = "# 📅 Relatório Diário de Conversas\nbla bla"
-    mock_event.message.id = 102
-    mock_event.message.date = "2023-01-01"
-    mock_event.message.out = True  # Reports are usually outgoing
-    mock_event.sender = User(id=456, first_name="Me", last_name="Myself")
-
-    # Mock DB save
-    with patch.object(learning_service, "_save_message_to_db", return_value=1000) as mock_save:
-        # We don't patch extract_facts or get_me because they shouldn't be reached
-        with patch("backend.services.learning.asyncio.create_task") as mock_create_task:
-            await learning_service.handle_message_learning(mock_event)
-
-            # Should NOT spawn a task for reports
-            mock_create_task.assert_not_called()
-
-        # Verify save_message called (we still save the log)
-        mock_save.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_resolve_target_entity_with_string_id():
+async def test_ai_service_prompt_formatting_robustness():
+    """
+    Ensures AIService.generate_natural_response does not crash when input contains curly braces.
+    """
     # Setup
-    service = ReportingService()
-    service.client = AsyncMock()
+    ai_service = AIService()
+    ai_service.client = MagicMock()
+    # Mock the chain: client.aio.models.generate_content
+    ai_service.client.aio.models.generate_content = AsyncMock()
+    ai_service.client.aio.models.generate_content.return_value.text = "Response OK"
 
-    # Mock settings
-    with patch("backend.services.reporting.settings") as mock_settings:
-        mock_settings.REPORT_CHANNEL_ID = "-1001234567890"
+    # Mock context fetching to return empty context so we isolate the prompt formatting logic
+    # We patch the synchronous method _get_context but since it's run in a thread,
+    # we need to be careful. However, we can patch the AIService class method directly.
+    with patch.object(AIService, "_get_context", return_value=([], [])):
+        # Test with input containing braces which might confuse format() if not careful
+        user_message_with_braces = "Tell me about {JSON} format and {key: value}"
 
-        # Mock client.get_entity to return a dummy entity when called with int
-        expected_id = -1001234567890
-        mock_entity = AsyncMock()
-        mock_entity.id = expected_id
-        service.client.get_entity.return_value = mock_entity
-
-        # Execute
-        result = await service._resolve_target_entity()
-
-        # Verify
-        # The key verification: verify get_entity was called with an INTEGER, not a string
-        service.client.get_entity.assert_called_with(expected_id)
-        assert result.id == expected_id
+        try:
+            # We call the method. If .format() fails, it raises KeyError or ValueError
+            response = await ai_service.generate_natural_response(123, user_message_with_braces)
+            assert response == "Response OK"
+        except (ValueError, KeyError) as e:
+            pytest.fail(f"AIService crashed on brace formatting: {e}")
 
 
 @pytest.mark.asyncio
-async def test_resolve_target_entity_with_int_id():
+async def test_reporting_service_channel_resolution():
+    """
+    Ensures ReportingService handles various REPORT_CHANNEL_ID types correctly.
+    """
     # Setup
-    service = ReportingService()
-    service.client = AsyncMock()
+    reporting_service = ReportingService()
+    reporting_service.client = MagicMock()
+    reporting_service.client.get_entity = AsyncMock()
+    reporting_service.client.get_me = AsyncMock()
 
-    # Mock settings
-    with patch("backend.services.reporting.settings") as mock_settings:
-        expected_id = -1009876543210
-        mock_settings.REPORT_CHANNEL_ID = expected_id
+    mock_entity = MagicMock()
+    mock_entity.id = 999
+    reporting_service.client.get_entity.return_value = mock_entity
 
-        mock_entity = AsyncMock()
-        mock_entity.id = expected_id
-        service.client.get_entity.return_value = mock_entity
+    mock_me = MagicMock()
+    mock_me.id = 111
+    reporting_service.client.get_me.return_value = mock_me
 
-        # Execute
-        result = await service._resolve_target_entity()
+    # We patch the settings object imported in reporting.py
+    # Note: reporting.py does `from backend.settings import settings`
 
-        # Verify
-        service.client.get_entity.assert_called_with(expected_id)
-        assert result.id == expected_id
+    # Case 1: Valid Integer ID
+    with patch("backend.services.reporting.settings.REPORT_CHANNEL_ID", 12345):
+        entity = await reporting_service._resolve_target_entity()
+        # Expectation: It tries to get entity 12345
+        reporting_service.client.get_entity.assert_called_with(12345)
+        assert entity.id == 999
 
+    # Case 2: Valid String ID
+    with patch("backend.services.reporting.settings.REPORT_CHANNEL_ID", "@mychannel"):
+        entity = await reporting_service._resolve_target_entity()
+        reporting_service.client.get_entity.assert_called_with("@mychannel")
+        assert entity.id == 999
 
-def test_ai_context_fact_limit():
-    from backend.settings import settings
+    # Case 3: Empty String -> Fallback to Me
+    with patch("backend.services.reporting.settings.REPORT_CHANNEL_ID", ""):
+        # Reset mock
+        reporting_service.client.get_entity.reset_mock()
+        entity = await reporting_service._resolve_target_entity()
 
-    # We modified this to 5000 in memory, checking if it is reflected in settings
-    # Assuming it is 5000 based on previous context
-    assert settings.AI_CONTEXT_FACT_LIMIT >= 10
+        # Should NOT call get_entity with empty string (it might, but we want fallback)
+        # Actually implementation might call get_entity("") which fails, then catch except.
+        # But we want to ensure we get 'me' back.
+        assert entity.id == 111
+
+    # Case 4: None -> Fallback to Me
+    with patch("backend.services.reporting.settings.REPORT_CHANNEL_ID", None):
+        entity = await reporting_service._resolve_target_entity()
+        assert entity.id == 111

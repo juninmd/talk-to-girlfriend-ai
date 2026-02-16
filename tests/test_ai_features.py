@@ -70,5 +70,5 @@ async def test_ingest_history_flow():
 
                 result_msg = await service.ingest_history(123, limit=5)
 
-                assert "Ingested 1 messages" in result_msg
+                assert "Ingested 1 new messages" in result_msg
                 service._fetch_history_messages.assert_called_with("dummy_entity", 5, 0)

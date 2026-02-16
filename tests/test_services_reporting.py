@@ -49,7 +49,10 @@ async def test_generate_daily_report_with_messages(mock_session, mock_client, mo
 
         with patch("backend.services.reporting.settings") as mock_settings:
             mock_settings.REPORT_CHANNEL_ID = -100
-            mock_client.get_entity = AsyncMock(return_value="channel")
+
+            mock_entity = MagicMock()
+            mock_entity.id = 100
+            mock_client.get_entity = AsyncMock(return_value=mock_entity)
             mock_client.send_message = AsyncMock()
 
             service = ReportingService()

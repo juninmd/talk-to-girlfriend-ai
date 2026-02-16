@@ -57,7 +57,7 @@ async def test_learning_service_ingest_history_batch_processing():
                 with patch("asyncio.sleep", new_callable=AsyncMock):
                     result_msg = await service.ingest_history(chat_id=123, limit=10)
 
-                    assert "Ingested 10 messages" in result_msg
+                    assert "Ingested 10 new messages" in result_msg
                     # Check if analyze was called for all 10 messages
                     assert mock_analyze.call_count == 10
 
