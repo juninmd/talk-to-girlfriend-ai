@@ -59,11 +59,10 @@ class AIService:
         # 3. Clean up any remaining whitespace
         raw_text = raw_text.strip()
 
-        # 4. Simple repair for common trailing comma issue
-        if raw_text.endswith(",]"):
-            raw_text = raw_text[:-2] + "]"
-        elif raw_text.endswith(","):
-            raw_text = raw_text[:-1]
+        # 4. Repair common trailing comma issue using regex
+        # Replaces ", ]" with "]" and ", }" with "}"
+        raw_text = re.sub(r",\s*\]", "]", raw_text)
+        raw_text = re.sub(r",\s*\}", "}", raw_text)
 
         return raw_text
 
@@ -74,6 +73,10 @@ class AIService:
         Returns a list of dicts conforming to ExtractedFact schema.
         """
         if not self.client:
+            return []
+
+        # Optimization: Skip short texts (likely "ok", "👍", etc.)
+        if len(text.strip()) < 10:
             return []
 
         # Safe formatting
@@ -180,6 +183,7 @@ class AIService:
             history = session.exec(statement).all()
             history = sorted(history, key=lambda x: x.date)
 
+            # Retrieve more facts to provide better context
             facts = session.exec(
                 select(Fact)
                 .where(Fact.chat_id == chat_id)

@@ -5,6 +5,8 @@ FACT_EXTRACTION_PROMPT = """
 Analise o texto fornecido e extraia fatos relevantes para construir uma memória de longo prazo sobre o usuário e suas interações.
 O objetivo é criar um "Digital Twin" de conhecimento ou um assistente pessoal ultra-contextualizado.
 
+**IMPORTANTE:** Retorne APENAS um JSON válido. Não inclua Markdown (```json ... ```) ou texto extra.
+
 Busque ativamente por:
 - **Preferências e Gostos:** (Comidas, músicas, filmes, estilos de código, IDEs, ferramentas)
 - **Relacionamentos:** (Quem é quem, familiares, parceiros, amigos próximos, hierarquia no trabalho)
@@ -18,6 +20,7 @@ Diretrizes:
 2. Extraia o máximo de detalhe possível no valor.
 3. Se for uma mensagem do próprio usuário (auto-referência), priorize como Fato Confirmado.
 4. Se o texto não contiver fatos novos ou relevantes, retorne uma lista vazia `[]`.
+5. **NÃO invente fatos.** Apenas extraia o que está explícito ou fortemente implícito.
 
 Texto: "{text}"
 
@@ -25,6 +28,13 @@ Formato de Saída (JSON Array):
 [
     {{"entity": "Nome/Assunto", "value": "Fato detalhado extraído", "category": "pessoal|trabalho|agenda|local|tech|opiniao|relacionamento"}}
 ]
+
+Exemplos:
+Texto: "Odeio Java, prefiro Python."
+JSON: [{{"entity": "Java", "value": "Odeia Java", "category": "tech"}}, {{"entity": "Python", "value": "Prefere Python", "category": "tech"}}]
+
+Texto: "Vou viajar para SP dia 20."
+JSON: [{{"entity": "Viagem SP", "value": "Viajar para SP dia 20", "category": "agenda"}}]
 """
 
 # Prompt para Resumo Diário (Newsletter/Relatório)
@@ -70,7 +80,7 @@ Sua persona é leal, pragmática e tem um senso de humor sarcástico típico de 
 
 **DIRETRIZES DE ESTILO (CRÍTICO):**
 - **Curto e Direto:** Responda como num chat de Telegram. 1 a 3 frases curtas. Nada de "textão" corporativo.
-- **Gírias Tech/BR:** Use termos como "Mano", "Véio", "Deploy", "Crashou", "Tankou", "LGTM", "Gambiarra", "Vapo", "Só vai", "Deu ruim", "Buildou".
+- **Gírias Tech/BR:** Use termos como "Mano", "Véio", "Deploy", "Crashou", "Tankou", "LGTM", "Gambiarra", "Vapo", "Só vai", "Deu ruim", "Buildou", "F", "Tmj".
 - **Sem Formalidades:** NUNCA diga "Olá, sou sua IA" ou "Em que posso ajudar?". Comece com "Fala tu", "E aí", "Qual a boa?", ou vá direto ao ponto.
 - **Humor Ácido:** Se o usuário reclamar de bug, pergunte se ele leu a documentação ou se foi culpa do estagiário.
 - **Memória Ativa:** Se o usuário mencionar algo que você sabe (do contexto), cite isso. Ex: "Vai comer aquele sushi de novo?" ou "Ainda apanhando pro Rust?".
