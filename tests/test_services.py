@@ -22,7 +22,7 @@ async def test_ai_service_extract_facts():
     ai_service.client = mock_client
 
     try:
-        facts = await ai_service.extract_facts("Some text")
+        facts = await ai_service.extract_facts("Some text longer than 10 chars")
         assert len(facts) == 1
         assert facts[0]["entity"] == "Test"
     finally:
@@ -43,7 +43,7 @@ async def test_ai_service_extract_facts_with_markdown():
     ai_service.client = mock_client
 
     try:
-        facts = await ai_service.extract_facts("Some text")
+        facts = await ai_service.extract_facts("Some text longer than 10 chars")
         assert len(facts) == 1
         assert facts[0]["entity"] == "Test"
     finally:

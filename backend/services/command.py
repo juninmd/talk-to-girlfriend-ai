@@ -2,6 +2,7 @@ import asyncio
 import logging
 from sqlmodel import Session, select
 from backend.database import engine, Fact
+from backend.settings import settings
 from backend.services.learning import learning_service
 from backend.services.reporting import reporting_service
 
@@ -88,7 +89,7 @@ class CommandService:
     async def _handle_global_report(self, chat_id: int):
         await self.client.send_message(
             chat_id,
-            "🌍 Gerando e enviando relatório global...",
+            "🌍 Gerando e enviando relatório global para o canal configurado...",
         )
         report_text = await reporting_service.generate_daily_report(chat_id=None)
 
@@ -123,7 +124,10 @@ class CommandService:
                     chat_id, "🤷‍♂️ Não conheço nenhum fato sobre esta conversa ainda."
                 )
             else:
-                response_lines = ["**Fatos Conhecidos:**", ""]
+                response_lines = [
+                    f"**Fatos Conhecidos (Últimos {settings.AI_CONTEXT_FACT_LIMIT}):**",
+                    "",
+                ]
                 grouped = {}
                 for f in facts:
                     if f.category not in grouped:
@@ -147,6 +151,6 @@ class CommandService:
                 select(Fact)
                 .where(Fact.chat_id == chat_id)
                 .order_by(Fact.created_at.desc())
-                .limit(30)
+                .limit(settings.AI_CONTEXT_FACT_LIMIT)
             )
             return session.exec(statement).all()
