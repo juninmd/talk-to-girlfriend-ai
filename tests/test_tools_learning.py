@@ -12,7 +12,9 @@ def mock_learning_service():
 
 @pytest.mark.asyncio
 async def test_learn_from_chat(mock_learning_service):
-    mock_learning_service.ingest_history = AsyncMock(return_value="Ingested 50 messages. Learned 5 new facts.")
+    mock_learning_service.ingest_history = AsyncMock(
+        return_value="Ingested 50 messages. Learned 5 new facts."
+    )
 
     result = await learning.learn_from_chat(chat_id=123, limit=50)
     assert "Result for chat 123" in result

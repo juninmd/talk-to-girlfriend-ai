@@ -83,6 +83,7 @@ async def test_handle_commands_unknown(service):
     assert result is False
     service.client.send_message.assert_not_called()
 
+
 @pytest.mark.asyncio
 async def test_handle_commands_start(service):
     result = await service.handle_command(123, "/start")
