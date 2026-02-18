@@ -48,19 +48,19 @@ class CommandService:
 
     async def _handle_start(self, chat_id: int):
         welcome_message = (
-            "👋 **Olá! Eu sou o Jules.**\n\n"
-            "Sou seu assistente pessoal com inteligência artificial.\n"
-            "Estou aqui para conversar, aprender sobre você e ajudar no dia a dia.\n\n"
-            "**O que eu posso fazer:**\n"
-            "🧠 **Aprender:** Leio o histórico para entender o contexto.\n"
-            "📊 **Relatórios:** Crio resumos diários das conversas.\n"
-            "💡 **Fatos:** Memorizo preferências e detalhes importantes.\n\n"
-            "**Comandos Disponíveis:**\n"
-            "/start ou /ajuda - Mostra esta mensagem.\n"
-            "/aprender [n] - Lê as últimas n mensagens.\n"
-            "/relatorio - Gera um resumo desta conversa.\n"
-            "/relatorio_global - Gera o relatório diário geral.\n"
-            "/fatos - Mostra o que eu sei sobre você."
+            "👋 **Fala tu! Eu sou o Jules.**\n\n"
+            "Sou seu Senior Software Engineer de estimação (e IA nas horas vagas).\n"
+            "Tô aqui pra ajudar a organizar a bagunça, lembrar do que você esquece e garantir que a gente siga as **Boas Práticas**.\n\n"
+            "**O que eu faço:**\n"
+            "🧠 **Memória:** Aprendo sobre seus projetos e stack (se você deixar).\n"
+            "📊 **Relatórios:** Resumo o caos do dia em algo legível.\n"
+            "💡 **Contexto:** Te ajudo a não perder o fio da meada.\n\n"
+            "**Comandos:**\n"
+            "`/start` - Esse texto aqui.\n"
+            "`/aprender [n]` - Leio as últimas n mensagens pra ficar por dentro.\n"
+            "`/relatorio` - Resumo rápido dessa conversa.\n"
+            "`/relatorio_global` - O resumo oficial do dia (vai pro canal).\n"
+            "`/fatos` - O que eu sei sobre você (cuidado com a verdade)."
         )
         await self.client.send_message(chat_id, welcome_message)
 
@@ -74,13 +74,13 @@ class CommandService:
             try:
                 parsed_limit = int(parts[1])
                 if parsed_limit > 0:
-                    limit = parsed_limit
+                    limit = min(parsed_limit, 500)  # Max limit 500
             except ValueError:
                 pass
 
         await self.client.send_message(
             chat_id,
-            f"🧠 Iniciando aprendizado das últimas {limit} mensagens...",
+            f"🧠 Deixa comigo. Lendo as últimas {limit} mensagens pra pegar o contexto...",
         )
 
         status_msg = await learning_service.ingest_history(chat_id, limit)
@@ -89,19 +89,19 @@ class CommandService:
     async def _handle_global_report(self, chat_id: int):
         await self.client.send_message(
             chat_id,
-            "🌍 Gerando e enviando relatório global para o canal configurado...",
+            "🌍 Processando relatório global... Pode demorar um pouquinho.",
         )
         report_text = await reporting_service.generate_daily_report(chat_id=None)
 
         if report_text:
-            await self.client.send_message(chat_id, "✅ Relatório global enviado!")
+            await self.client.send_message(chat_id, "✅ Relatório global enviado com sucesso!")
         else:
-            await self.client.send_message(chat_id, "⚠️ Falha ao gerar relatório.")
+            await self.client.send_message(chat_id, "⚠️ Deu ruim. Falha ao gerar relatório.")
 
     async def _handle_report(self, chat_id: int):
         await self.client.send_message(
             chat_id,
-            "📊 Gerando relatório para esta conversa...",
+            "📊 Gerando relatório local... Aguenta aí.",
         )
         report_text = await reporting_service.generate_daily_report(
             chat_id=chat_id,
@@ -111,7 +111,7 @@ class CommandService:
         else:
             await self.client.send_message(
                 chat_id,
-                "⚠️ Não foi possível gerar o relatório.",
+                "⚠️ Não consegui gerar o relatório. Talvez não tenha mensagens novas?",
             )
 
     async def _handle_facts(self, chat_id: int):

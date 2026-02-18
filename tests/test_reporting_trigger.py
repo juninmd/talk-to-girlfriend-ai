@@ -35,11 +35,11 @@ async def test_handle_commands_relatorio_global(service):
 
         # Check first message
         args1, _ = service.client.send_message.call_args_list[0]
-        assert "Gerando e enviando relatório global" in args1[1]
+        assert "Processando relatório global" in args1[1]
 
         # Check success message
         args2, _ = service.client.send_message.call_args_list[1]
-        assert "Relatório global enviado!" in args2[1]
+        assert "Relatório global enviado com sucesso!" in args2[1]
 
 
 @pytest.mark.asyncio

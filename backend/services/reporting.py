@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 
 from sqlmodel import Session, select
 from backend.database import engine, Message
@@ -165,9 +165,25 @@ class ReportingService:
 
         try:
             await self.client.send_message(target_entity, report_text)
-            logger.info(f"Daily report sent successfully to {target_entity.id}.")
+            logger.info(
+                f"Daily report sent successfully to {target_entity.id} (Title: {getattr(target_entity, 'title', 'Unknown')})."
+            )
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")
+
+    def _normalize_channel_id(self, channel_id: Union[int, str]) -> Union[int, str]:
+        """Normalizes channel ID (trims string, converts to int if possible)."""
+        if isinstance(channel_id, str):
+            channel_id = channel_id.strip()
+            if not channel_id:
+                raise ValueError("Empty REPORT_CHANNEL_ID string.")
+
+            # Try to convert to int if it looks like one (e.g. "-100...")
+            try:
+                return int(channel_id)
+            except ValueError:
+                return channel_id  # It's a username or invite link
+        return channel_id
 
     async def _resolve_target_entity(self) -> Any:
         """
@@ -181,16 +197,7 @@ class ReportingService:
 
         if channel_id:
             try:
-                # Validate and Normalize ID
-                if isinstance(channel_id, str):
-                    channel_id = channel_id.strip()
-                    if not channel_id:
-                        raise ValueError("Empty REPORT_CHANNEL_ID string.")
-                    # Try to convert to int if it looks like one (e.g. "-100...")
-                    try:
-                        channel_id = int(channel_id)
-                    except ValueError:
-                        pass  # It's a username or invite link
+                channel_id = self._normalize_channel_id(channel_id)
 
                 # Fetch Entity
                 target_entity = await self.client.get_entity(channel_id)
