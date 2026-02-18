@@ -25,7 +25,7 @@ async def test_handle_start(service):
     service.client.send_message.assert_called_once()
     args, _ = service.client.send_message.call_args
     assert args[0] == 123
-    assert "Olá! Eu sou o Jules" in args[1]
+    assert "Fala tu! Eu sou o Jules" in args[1]
 
 
 @pytest.mark.asyncio
@@ -36,7 +36,7 @@ async def test_handle_ajuda(service):
     assert result is True
     service.client.send_message.assert_called_once()
     args, _ = service.client.send_message.call_args
-    assert "Olá! Eu sou o Jules" in args[1]
+    assert "Fala tu! Eu sou o Jules" in args[1]
 
 
 @pytest.mark.asyncio
@@ -47,4 +47,4 @@ async def test_handle_help(service):
     assert result is True
     service.client.send_message.assert_called_once()
     args, _ = service.client.send_message.call_args
-    assert "Olá! Eu sou o Jules" in args[1]
+    assert "Fala tu! Eu sou o Jules" in args[1]

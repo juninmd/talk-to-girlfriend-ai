@@ -165,7 +165,9 @@ class ReportingService:
 
         try:
             await self.client.send_message(target_entity, report_text)
-            logger.info(f"Daily report sent successfully to {target_entity.id}.")
+            logger.info(
+                f"Daily report sent successfully to {target_entity.id} (Title: {getattr(target_entity, 'title', 'Unknown')})."
+            )
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")
 
@@ -186,6 +188,7 @@ class ReportingService:
                     channel_id = channel_id.strip()
                     if not channel_id:
                         raise ValueError("Empty REPORT_CHANNEL_ID string.")
+
                     # Try to convert to int if it looks like one (e.g. "-100...")
                     try:
                         channel_id = int(channel_id)

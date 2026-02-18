@@ -82,3 +82,11 @@ async def test_handle_commands_unknown(service):
     result = await service.handle_command(123, "Hello world")
     assert result is False
     service.client.send_message.assert_not_called()
+
+@pytest.mark.asyncio
+async def test_handle_commands_start(service):
+    result = await service.handle_command(123, "/start")
+    assert result is True
+    # Verify new content
+    args, _ = service.client.send_message.call_args
+    assert "Fala tu! Eu sou o Jules" in args[1]

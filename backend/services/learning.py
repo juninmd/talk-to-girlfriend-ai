@@ -48,12 +48,12 @@ class LearningService:
             count = await self._process_messages_ingestion(chat_id, messages)
 
             relevant_msgs = self._filter_relevant_messages(messages)
-            await self._process_learning_batch(chat_id, relevant_msgs)
+            facts_count = await self._process_learning_batch(chat_id, relevant_msgs)
 
             if count == 0:
                 msg = "No new messages found to ingest."
             else:
-                msg = f"Ingested {count} new messages. Analyzed {len(relevant_msgs)} for facts."
+                msg = f"Ingested {count} new messages. Learned {facts_count} new facts."
 
             logger.info(f"Chat {chat_id}: {msg}")
             return msg
@@ -140,10 +140,11 @@ class LearningService:
             and not m.message.startswith(REPORT_PREFIXES)
         ]
 
-    async def _process_learning_batch(self, chat_id: int, relevant_msgs: List[Any]):
-        """Processes learning (fact extraction) in batches to avoid rate limits."""
+    async def _process_learning_batch(self, chat_id: int, relevant_msgs: List[Any]) -> int:
+        """Processes learning (fact extraction) in batches. Returns total facts found."""
         batch_size = settings.LEARNING_BATCH_SIZE
         total_batches = (len(relevant_msgs) + batch_size - 1) // batch_size
+        total_facts = 0
 
         for i in range(0, len(relevant_msgs), batch_size):
             batch_num = (i // batch_size) + 1
@@ -157,8 +158,11 @@ class LearningService:
                 tasks.append(self._analyze_and_extract_safe(m.message, m.id, chat_id))
 
             # Run batch and wait a bit
-            await asyncio.gather(*tasks)
+            results = await asyncio.gather(*tasks)
+            total_facts += sum(results)
             await asyncio.sleep(settings.LEARNING_DELAY)
+
+        return total_facts
 
     async def start_listening(self):
         """Registers event handlers for incoming messages."""
@@ -240,24 +244,28 @@ class LearningService:
         except Exception as e:
             logger.error(f"Error in handle_message_learning: {e}")
 
-    async def _analyze_and_extract(self, text: str, source_msg_id: int, chat_id: int):
-        """Extracts facts using AI service and saves them."""
+    async def _analyze_and_extract(self, text: str, source_msg_id: int, chat_id: int) -> int:
+        """Extracts facts using AI service and saves them. Returns number of facts found."""
         try:
             facts = await ai_service.extract_facts(text)
             if facts:
                 await asyncio.to_thread(self._save_facts_to_db, facts, source_msg_id, chat_id)
                 logger.info(f"Learned {len(facts)} new facts from message {source_msg_id}")
+                return len(facts)
+            return 0
         except Exception as e:
             logger.error(f"Error in fact extraction: {e}")
+            return 0
 
-    async def _analyze_and_extract_safe(self, text: str, source_msg_id: int, chat_id: int):
-        """Wrapper for extraction that catches all exceptions to prevent batch failure."""
+    async def _analyze_and_extract_safe(self, text: str, source_msg_id: int, chat_id: int) -> int:
+        """Wrapper for extraction that catches all exceptions. Returns 0 on error."""
         try:
-            await self._analyze_and_extract(text, source_msg_id, chat_id)
+            return await self._analyze_and_extract(text, source_msg_id, chat_id)
         except Exception as e:
             logger.error(
                 f"Failed to process message {source_msg_id} for learning: {e}", exc_info=True
             )
+            return 0
 
 
 learning_service = LearningService()
