@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import random
+from typing import Optional
 from telethon.tl.types import User
 from backend.client import client
 from backend.services.ai import ai_service
@@ -39,9 +40,10 @@ class ConversationService:
             text = event.message.message
             chat_id = event.chat_id
             reply_to_msg_id = event.message.id if not event.is_private else None
+            sender_id = event.sender_id
 
             # --- Command Handling ---
-            if await self.command_service.handle_command(chat_id, text):
+            if await self.command_service.handle_command(chat_id, text, sender_id):
                 return
             # ------------------------
 
@@ -51,7 +53,11 @@ class ConversationService:
             # Trigger reply
             asyncio.create_task(
                 self._generate_and_send_reply(
-                    chat_id, text, sender_name, reply_to_msg_id=reply_to_msg_id
+                    chat_id,
+                    text,
+                    sender_name,
+                    sender_id=sender_id,
+                    reply_to_msg_id=reply_to_msg_id,
                 )
             )
 
@@ -63,6 +69,7 @@ class ConversationService:
         chat_id: int,
         user_message: str,
         sender_name: str,
+        sender_id: Optional[int] = None,
         reply_to_msg_id: int = None,
     ):
         """Generates a response using AI and sends it."""
@@ -81,7 +88,7 @@ class ConversationService:
             async with self.client.action(chat_id, "typing"):
                 # Generate response
                 response_text = await ai_service.generate_natural_response(
-                    chat_id, user_message, sender_name
+                    chat_id, user_message, sender_name, sender_id
                 )
 
                 # Wait a bit more to simulate typing the response

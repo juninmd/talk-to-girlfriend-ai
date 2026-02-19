@@ -21,11 +21,14 @@ class Settings(BaseSettings):
 
     # Reporting
     REPORT_CHANNEL_ID: Optional[Union[int, str]] = None
+    REPORT_TIME_HOUR: int = 8
+    REPORT_TIME_MINUTE: int = 0
 
     # Learning
     LEARNING_BATCH_SIZE: int = 5
     LEARNING_DELAY: float = 1.0
     MIN_MESSAGE_LENGTH_FOR_LEARNING: int = 10
+    LEARNING_HISTORY_LIMIT: int = 50
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"  # Ignore extra env vars

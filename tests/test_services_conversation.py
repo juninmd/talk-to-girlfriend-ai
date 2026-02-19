@@ -27,6 +27,7 @@ async def test_handle_incoming_message_trigger(service):
     event.sender.first_name = "TestUser"
     event.message.sender = event.sender
     event.chat_id = 123
+    event.sender_id = 456
 
     # We patch the method on the instance `service`
     with patch.object(service, "_generate_and_send_reply", new_callable=AsyncMock) as mock_reply:
@@ -37,7 +38,9 @@ async def test_handle_incoming_message_trigger(service):
         # Actually, since we mock `_generate_and_send_reply` as AsyncMock, calling it returns a coroutine.
         # create_task(coro) will consume it.
         # But `mock_reply` will record the call.
-        mock_reply.assert_called_once_with(123, "Hello", "TestUser", reply_to_msg_id=None)
+        mock_reply.assert_called_once_with(
+            123, "Hello", "TestUser", sender_id=456, reply_to_msg_id=None
+        )
 
 
 @pytest.mark.asyncio
@@ -86,6 +89,6 @@ async def test_generate_and_send_reply(service):
             await service._generate_and_send_reply(chat_id, user_message, "TestUser")
 
         mock_ai.generate_natural_response.assert_called_once_with(
-            chat_id, user_message, "TestUser"
+            chat_id, user_message, "TestUser", None
         )
         service.client.send_message.assert_called_once_with(chat_id, "Hello there", reply_to=None)

@@ -1,7 +1,7 @@
 from typing import Optional
 from datetime import datetime, timezone
 import os
-from sqlmodel import SQLModel, Field, create_engine, Session
+from sqlmodel import SQLModel, Field, create_engine, Session, text
 
 # Database setup
 # Use absolute path for database to avoid issues when running from different directories
@@ -26,6 +26,7 @@ class Message(SQLModel, table=True):
 class Fact(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     chat_id: int
+    sender_id: Optional[int] = Field(default=None)
     entity_name: str  # e.g., "User's Name", "Favorite Color"
     value: str
     category: str = "general"  # personal, work, preference, etc.
@@ -33,8 +34,24 @@ class Fact(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+def migrate_db():
+    """Checks for missing columns and adds them if necessary (SQLite specific)."""
+    with engine.connect() as connection:
+        try:
+            # Check for sender_id in fact table
+            result = connection.execute(text("PRAGMA table_info(fact)"))
+            columns = [row.name for row in result]
+            if "sender_id" not in columns:
+                print("Migrating DB: Adding sender_id to fact table...")
+                connection.execute(text("ALTER TABLE fact ADD COLUMN sender_id INTEGER"))
+                connection.commit()
+        except Exception as e:
+            print(f"Migration warning: {e}")
+
+
 def create_db_and_tables():
     SQLModel.metadata.create_all(engine)
+    migrate_db()
 
 
 def get_session():
