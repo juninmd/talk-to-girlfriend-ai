@@ -51,7 +51,7 @@ async def test_handle_commands_fatos_empty(service):
         assert result is True
         service.client.send_message.assert_any_call(123, "🧠 Buscando fatos conhecidos...")
         service.client.send_message.assert_any_call(
-            123, "🤷‍♂️ Não conheço nenhum fato sobre esta conversa ainda."
+            123, "🤷‍♂️ Não conheço nenhum fato sobre esta conversa (ou você) ainda."
         )
 
 

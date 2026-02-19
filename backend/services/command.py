@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from sqlmodel import Session, select
+from typing import Optional
+from sqlmodel import Session, select, or_
 from backend.database import engine, Fact
 from backend.settings import settings
 from backend.services.learning import learning_service
@@ -13,7 +14,9 @@ class CommandService:
     def __init__(self, client):
         self.client = client
 
-    async def handle_command(self, chat_id: int, text: str) -> bool:
+    async def handle_command(
+        self, chat_id: int, text: str, sender_id: Optional[int] = None
+    ) -> bool:
         """
         Handles commands like /aprender, /relatorio, /fatos.
         Returns True if a command was handled, False otherwise.
@@ -41,7 +44,7 @@ class CommandService:
             return True
 
         if text.startswith("/fatos"):
-            await self._handle_facts(chat_id)
+            await self._handle_facts(chat_id, sender_id)
             return True
 
         return False
@@ -69,7 +72,7 @@ class CommandService:
 
     async def _handle_learn(self, chat_id: int, text: str):
         parts = text.split()
-        limit = 50
+        limit = settings.LEARNING_HISTORY_LIMIT
         if len(parts) > 1:
             try:
                 parsed_limit = int(parts[1])
@@ -114,14 +117,14 @@ class CommandService:
                 "⚠️ Não consegui gerar o relatório. Talvez não tenha mensagens novas?",
             )
 
-    async def _handle_facts(self, chat_id: int):
+    async def _handle_facts(self, chat_id: int, sender_id: Optional[int] = None):
         await self.client.send_message(chat_id, "🧠 Buscando fatos conhecidos...")
 
         try:
-            facts = await asyncio.to_thread(self._fetch_facts, chat_id)
+            facts = await asyncio.to_thread(self._fetch_facts, chat_id, sender_id)
             if not facts:
                 await self.client.send_message(
-                    chat_id, "🤷‍♂️ Não conheço nenhum fato sobre esta conversa ainda."
+                    chat_id, "🤷‍♂️ Não conheço nenhum fato sobre esta conversa (ou você) ainda."
                 )
             else:
                 response_lines = [
@@ -145,12 +148,15 @@ class CommandService:
             logger.error(f"Error fetching facts: {e}")
             await self.client.send_message(chat_id, "❌ Erro ao buscar fatos.")
 
-    def _fetch_facts(self, chat_id: int):
+    def _fetch_facts(self, chat_id: int, sender_id: Optional[int] = None):
         with Session(engine) as session:
-            statement = (
-                select(Fact)
-                .where(Fact.chat_id == chat_id)
-                .order_by(Fact.created_at.desc())
-                .limit(settings.AI_CONTEXT_FACT_LIMIT)
+            query = select(Fact).where(Fact.chat_id == chat_id)
+            if sender_id:
+                query = select(Fact).where(
+                    or_(Fact.chat_id == chat_id, Fact.sender_id == sender_id)
+                )
+
+            statement = query.order_by(Fact.created_at.desc()).limit(
+                settings.AI_CONTEXT_FACT_LIMIT
             )
             return session.exec(statement).all()

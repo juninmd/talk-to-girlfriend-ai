@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Tuple, Optional
 from google import genai
 from google.genai import types
 
-from sqlmodel import Session, select
+from sqlmodel import Session, select, or_
 from backend.database import engine, Message, Fact
 from backend.settings import settings
 from backend.prompts import (
@@ -170,7 +170,9 @@ class AIService:
             logger.error(f"Error summarizing: {e}")
             raise e
 
-    def _get_context(self, chat_id: int) -> Tuple[List[Message], List[Fact]]:
+    def _get_context(
+        self, chat_id: int, sender_id: Optional[int] = None
+    ) -> Tuple[List[Message], List[Fact]]:
         """Helper to fetch DB context synchronously."""
         with Session(engine) as session:
             # Get last 20 messages for better flow
@@ -183,12 +185,16 @@ class AIService:
             history = session.exec(statement).all()
             history = sorted(history, key=lambda x: x.date)
 
-            # Retrieve more facts to provide better context
+            # Retrieve facts for chat OR sender (context + personalization)
+            if sender_id:
+                query = select(Fact).where(
+                    or_(Fact.chat_id == chat_id, Fact.sender_id == sender_id)
+                )
+            else:
+                query = select(Fact).where(Fact.chat_id == chat_id)
+
             facts = session.exec(
-                select(Fact)
-                .where(Fact.chat_id == chat_id)
-                .order_by(Fact.created_at.desc())
-                .limit(settings.AI_CONTEXT_FACT_LIMIT)
+                query.order_by(Fact.created_at.desc()).limit(settings.AI_CONTEXT_FACT_LIMIT)
             ).all()
             return history, facts
 
@@ -213,7 +219,11 @@ class AIService:
 
     @async_retry(max_attempts=2, delay=0.5)
     async def generate_natural_response(
-        self, chat_id: int, user_message: str, sender_name: str = "User"
+        self,
+        chat_id: int,
+        user_message: str,
+        sender_name: str = "User",
+        sender_id: Optional[int] = None,
     ) -> str:
         """
         Generates a natural response using history and facts.
@@ -224,7 +234,7 @@ class AIService:
 
         # 1. Retrieve Context (Non-blocking)
         try:
-            history, facts = await asyncio.to_thread(self._get_context, chat_id)
+            history, facts = await asyncio.to_thread(self._get_context, chat_id, sender_id)
         except Exception as e:
             logger.error(f"Error fetching context: {e}")
             history, facts = [], []

@@ -10,6 +10,7 @@ from mcp.types import ToolAnnotations
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from backend.client import client
 from backend.logging_setup import setup_logging
+from backend.settings import settings
 
 # Import new services
 from backend.database import create_db_and_tables
@@ -341,8 +342,13 @@ async def _main() -> None:
 
         # Scheduler for reports
         scheduler = AsyncIOScheduler()
-        # Run reporting service every day at 8:00 AM UTC
-        scheduler.add_job(reporting_service.generate_daily_report, "cron", hour=8, minute=0)
+        # Run reporting service every day at configured time
+        scheduler.add_job(
+            reporting_service.generate_daily_report,
+            "cron",
+            hour=settings.REPORT_TIME_HOUR,
+            minute=settings.REPORT_TIME_MINUTE,
+        )
         scheduler.start()
 
         logger.info("Telegram client started. Running MCP server...")

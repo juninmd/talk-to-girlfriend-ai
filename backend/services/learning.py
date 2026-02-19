@@ -155,7 +155,7 @@ class LearningService:
             batch = relevant_msgs[i : i + batch_size]
             tasks = []
             for m in batch:
-                tasks.append(self._analyze_and_extract_safe(m.message, m.id, chat_id))
+                tasks.append(self._analyze_and_extract_safe(m.message, m.id, chat_id, m.sender_id))
 
             # Run batch and wait a bit
             results = await asyncio.gather(*tasks)
@@ -193,7 +193,11 @@ class LearningService:
             return None
 
     async def _save_facts_to_db(
-        self, facts: List[Dict[str, Any]], source_msg_id: int, chat_id: int
+        self,
+        facts: List[Dict[str, Any]],
+        source_msg_id: int,
+        chat_id: int,
+        sender_id: Optional[int] = None,
     ):
         """Runs synchronous DB save of facts in a thread."""
         try:
@@ -201,6 +205,7 @@ class LearningService:
                 for fact_data in facts:
                     fact = Fact(
                         chat_id=chat_id,
+                        sender_id=sender_id,
                         entity_name=fact_data["entity"],
                         value=fact_data["value"],
                         category=fact_data.get("category", "general"),
@@ -222,6 +227,7 @@ class LearningService:
             is_outgoing = event.message.out
 
             msg_data = self._create_message_data(event.message, chat_id)
+            sender_id = msg_data.get("sender_id")
 
             # 1. Save to Database (Non-blocking)
             db_message_id = await asyncio.to_thread(self._save_message_to_db, msg_data)
@@ -239,17 +245,23 @@ class LearningService:
                 if me and me.bot and is_outgoing:
                     return
 
-                asyncio.create_task(self._analyze_and_extract(text, db_message_id, chat_id))
+                asyncio.create_task(
+                    self._analyze_and_extract(text, db_message_id, chat_id, sender_id)
+                )
 
         except Exception as e:
             logger.error(f"Error in handle_message_learning: {e}")
 
-    async def _analyze_and_extract(self, text: str, source_msg_id: int, chat_id: int) -> int:
+    async def _analyze_and_extract(
+        self, text: str, source_msg_id: int, chat_id: int, sender_id: Optional[int] = None
+    ) -> int:
         """Extracts facts using AI service and saves them. Returns number of facts found."""
         try:
             facts = await ai_service.extract_facts(text)
             if facts:
-                await asyncio.to_thread(self._save_facts_to_db, facts, source_msg_id, chat_id)
+                await asyncio.to_thread(
+                    self._save_facts_to_db, facts, source_msg_id, chat_id, sender_id
+                )
                 logger.info(f"Learned {len(facts)} new facts from message {source_msg_id}")
                 return len(facts)
             return 0
@@ -257,10 +269,12 @@ class LearningService:
             logger.error(f"Error in fact extraction: {e}")
             return 0
 
-    async def _analyze_and_extract_safe(self, text: str, source_msg_id: int, chat_id: int) -> int:
+    async def _analyze_and_extract_safe(
+        self, text: str, source_msg_id: int, chat_id: int, sender_id: Optional[int] = None
+    ) -> int:
         """Wrapper for extraction that catches all exceptions. Returns 0 on error."""
         try:
-            return await self._analyze_and_extract(text, source_msg_id, chat_id)
+            return await self._analyze_and_extract(text, source_msg_id, chat_id, sender_id)
         except Exception as e:
             logger.error(
                 f"Failed to process message {source_msg_id} for learning: {e}", exc_info=True
