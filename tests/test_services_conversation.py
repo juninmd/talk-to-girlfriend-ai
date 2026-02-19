@@ -38,7 +38,9 @@ async def test_handle_incoming_message_trigger(service):
         # Actually, since we mock `_generate_and_send_reply` as AsyncMock, calling it returns a coroutine.
         # create_task(coro) will consume it.
         # But `mock_reply` will record the call.
-        mock_reply.assert_called_once_with(123, "Hello", "TestUser", sender_id=456, reply_to_msg_id=None)
+        mock_reply.assert_called_once_with(
+            123, "Hello", "TestUser", sender_id=456, reply_to_msg_id=None
+        )
 
 
 @pytest.mark.asyncio
