@@ -1,6 +1,7 @@
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, patch
 from backend.services.learning import LearningService
+
 
 @pytest.mark.asyncio
 async def test_ingest_history_force_rescan():
@@ -15,9 +16,9 @@ async def test_ingest_history_force_rescan():
     service.client = mock_client
 
     # Patch the DB methods to avoid real DB calls
-    with patch.object(service, '_get_last_synced_id', return_value=100) as mock_get_last_id:
-        with patch.object(service, '_process_messages_ingestion', return_value=0):
-            with patch.object(service, '_process_learning_batch', return_value=0):
+    with patch.object(service, "_get_last_synced_id", return_value=100) as mock_get_last_id:
+        with patch.object(service, "_process_messages_ingestion", return_value=0):
+            with patch.object(service, "_process_learning_batch", return_value=0):
 
                 # Test with force_rescan=True
                 await service.ingest_history(chat_id=123, limit=50, force_rescan=True)
@@ -27,6 +28,7 @@ async def test_ingest_history_force_rescan():
 
                 # Verify _get_last_synced_id was NOT called
                 mock_get_last_id.assert_not_called()
+
 
 @pytest.mark.asyncio
 async def test_ingest_history_no_force_rescan():
@@ -40,9 +42,9 @@ async def test_ingest_history_no_force_rescan():
     service.client = mock_client
 
     # Patch the DB methods
-    with patch.object(service, '_get_last_synced_id', return_value=999) as mock_get_last_id:
-        with patch.object(service, '_process_messages_ingestion', return_value=0):
-            with patch.object(service, '_process_learning_batch', return_value=0):
+    with patch.object(service, "_get_last_synced_id", return_value=999) as mock_get_last_id:
+        with patch.object(service, "_process_messages_ingestion", return_value=0):
+            with patch.object(service, "_process_learning_batch", return_value=0):
 
                 # Test with force_rescan=False
                 await service.ingest_history(chat_id=123, limit=50, force_rescan=False)
