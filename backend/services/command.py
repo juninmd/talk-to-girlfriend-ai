@@ -86,7 +86,7 @@ class CommandService:
             f"🧠 Deixa comigo. Lendo as últimas {limit} mensagens pra pegar o contexto...",
         )
 
-        status_msg = await learning_service.ingest_history(chat_id, limit)
+        status_msg = await learning_service.ingest_history(chat_id, limit, force_rescan=True)
         await self.client.send_message(chat_id, f"✅ {status_msg}")
 
     async def _handle_global_report(self, chat_id: int):

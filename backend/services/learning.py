@@ -34,14 +34,26 @@ class LearningService:
                 pass
         return self._me
 
-    async def ingest_history(self, chat_id: int, limit: int = 100) -> str:
+    async def ingest_history(
+        self, chat_id: int, limit: int = 100, force_rescan: bool = False
+    ) -> str:
         """
         Fetches past messages and saves them to DB. Learns from recent ones.
         Returns a summary string.
+
+        Args:
+            chat_id: The ID of the chat to learn from.
+            limit: Number of messages to fetch.
+            force_rescan: If True, ignores last synced ID and fetches latest messages (backfill).
         """
-        logger.info(f"Starting history ingestion for chat {chat_id}, limit={limit}...")
+        logger.info(
+            f"Starting history ingestion for chat {chat_id}, limit={limit}, force_rescan={force_rescan}..."
+        )
         try:
-            min_id = self._get_last_synced_id(chat_id)
+            min_id = 0
+            if not force_rescan:
+                min_id = self._get_last_synced_id(chat_id)
+
             entity = await self.client.get_entity(chat_id)
 
             messages = await self._fetch_history_messages(entity, limit, min_id)
@@ -252,11 +264,23 @@ class LearningService:
         except Exception as e:
             logger.error(f"Error in handle_message_learning: {e}")
 
+    def _check_facts_exist(self, source_msg_id: int) -> bool:
+        """Checks if facts already exist for a given source message ID."""
+        with Session(engine) as session:
+            statement = select(Fact).where(Fact.source_message_id == source_msg_id)
+            result = session.exec(statement).first()
+            return result is not None
+
     async def _analyze_and_extract(
         self, text: str, source_msg_id: int, chat_id: int, sender_id: Optional[int] = None
     ) -> int:
         """Extracts facts using AI service and saves them. Returns number of facts found."""
         try:
+            # Check if facts already exist for this message to avoid duplicates
+            existing_facts = await asyncio.to_thread(self._check_facts_exist, source_msg_id)
+            if existing_facts:
+                return 0
+
             facts = await ai_service.extract_facts(text)
             if facts:
                 await asyncio.to_thread(

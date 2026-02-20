@@ -55,6 +55,10 @@ class ReportingService:
 
         # 4. Send Report (if scheduled/global)
         if not chat_id:
+            if not settings.REPORT_CHANNEL_ID:
+                logger.warning(
+                    "REPORT_CHANNEL_ID not set. Global report will be sent to Saved Messages."
+                )
             await self._send_report(report_text)
 
         return report_text
@@ -171,19 +175,29 @@ class ReportingService:
         except Exception as e:
             logger.error(f"Failed to send daily report: {e}")
 
-    def _normalize_channel_id(self, channel_id: Union[int, str]) -> Union[int, str]:
+    def _normalize_channel_id(self, channel_id: Union[int, str]) -> Optional[Union[int, str]]:
         """Normalizes channel ID (trims string, converts to int if possible)."""
+        if isinstance(channel_id, int):
+            return channel_id
+
         if isinstance(channel_id, str):
             channel_id = channel_id.strip()
+            # Remove quotes if present
+            channel_id = channel_id.strip("'").strip('"')
+
             if not channel_id:
-                raise ValueError("Empty REPORT_CHANNEL_ID string.")
+                logger.warning("REPORT_CHANNEL_ID is an empty string.")
+                return None
 
             # Try to convert to int if it looks like one (e.g. "-100...")
             try:
                 return int(channel_id)
             except ValueError:
-                return channel_id  # It's a username or invite link
-        return channel_id
+                # Assume it's a username or invite link
+                return channel_id
+
+        logger.warning(f"Invalid type for REPORT_CHANNEL_ID: {type(channel_id)}")
+        return None
 
     async def _resolve_target_entity(self) -> Any:
         """
@@ -197,10 +211,12 @@ class ReportingService:
 
         if channel_id:
             try:
-                channel_id = self._normalize_channel_id(channel_id)
+                normalized_id = self._normalize_channel_id(channel_id)
+                if normalized_id is None:
+                    raise ValueError("Invalid Channel ID format")
 
                 # Fetch Entity
-                target_entity = await self.client.get_entity(channel_id)
+                target_entity = await self.client.get_entity(normalized_id)
                 # Log success with entity name if available
                 entity_name = format_entity(target_entity).get("name", "Unknown")
                 logger.info(f"Resolved REPORT_CHANNEL_ID to {target_entity.id} ({entity_name})")
