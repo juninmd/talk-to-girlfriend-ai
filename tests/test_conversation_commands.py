@@ -25,7 +25,7 @@ async def test_handle_commands_aprender(service):
         result = await service.handle_command(123, "/aprender 20")
 
         assert result is True
-        mock_learn.ingest_history.assert_called_once_with(123, 20)
+        mock_learn.ingest_history.assert_called_once_with(123, 20, force_rescan=True)
         assert service.client.send_message.call_count == 2  # Starting + Done
 
 

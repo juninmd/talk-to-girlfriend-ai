@@ -99,12 +99,15 @@ class AIService:
             except json.JSONDecodeError as e:
                 logger.warning(f"Failed to parse JSON: {e}. Text: {raw_text[:100]}...")
                 return []
+            except Exception as e:
+                logger.error(f"Unexpected error parsing JSON: {e}")
+                return []
 
             return self._validate_facts(facts)
 
         except Exception as e:
             logger.error(f"Error extracting facts: {e}")
-            raise e
+            return []
 
     def _validate_facts(self, facts: Any) -> List[Dict[str, Any]]:
         """Validates and processes extracted facts against ExtractedFact schema."""
@@ -263,7 +266,7 @@ class AIService:
             return response.text
         except Exception as e:
             logger.error(f"Error generating response: {e}")
-            raise e
+            return "Mano, minha API de cérebro deu timeout aqui. Tenta de novo? 😵‍💫"
 
 
 ai_service = AIService()
