@@ -70,6 +70,10 @@ class ReportingService:
             statement = select(Message).where(Message.date >= cutoff)
             if chat_id:
                 statement = statement.where(Message.chat_id == chat_id)
+
+            # Limit to prevent memory issues with massive history
+            statement = statement.order_by(Message.date.desc()).limit(5000)
+
             messages = session.exec(statement).all()
             return list(messages)
 

@@ -22,28 +22,29 @@ class CommandService:
         Returns True if a command was handled, False otherwise.
         """
         text = text.strip()
+        text_lower = text.lower()
 
-        if text.startswith("/start"):
+        if text_lower.startswith("/start"):
             await self._handle_start(chat_id)
             return True
 
-        if text.startswith("/ajuda") or text.startswith("/help"):
+        if text_lower.startswith("/ajuda") or text_lower.startswith("/help"):
             await self._handle_help(chat_id)
             return True
 
-        if text.startswith("/aprender"):
+        if text_lower.startswith("/aprender"):
             await self._handle_learn(chat_id, text)
             return True
 
-        if text.startswith("/relatorio_global"):
+        if text_lower.startswith("/relatorio_global"):
             await self._handle_global_report(chat_id)
             return True
 
-        if text.startswith("/relatorio"):
+        if text_lower.startswith("/relatorio"):
             await self._handle_report(chat_id)
             return True
 
-        if text.startswith("/fatos"):
+        if text_lower.startswith("/fatos"):
             await self._handle_facts(chat_id, sender_id)
             return True
 
