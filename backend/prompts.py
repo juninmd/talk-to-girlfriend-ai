@@ -12,7 +12,7 @@ Busque ativamente por:
 - **Projetos & Trabalho:** (Nomes de projetos, status, prazos, bugs específicos, conquistas)
 - **Preferências:** (Gostos pessoais, estilos de música, comida, hobbies)
 - **Relacionamentos:** (Pessoas mencionadas, vínculos, hierarquia)
-- **Agenda & Eventos:** (Compromissos, viagens, datas importantes)
+- **Agenda & Eventos:** (Compromissos, viagens, datas importantes - **Use formato ISO 8601 YYYY-MM-DD se a data for explícita**)
 - **Opiniões:** (O que o usuário ama ou odeia, posições fortes)
 
 Diretrizes:
