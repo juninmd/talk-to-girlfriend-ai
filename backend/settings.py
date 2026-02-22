@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     REPORT_CHANNEL_ID: Optional[Union[int, str]] = None
     REPORT_TIME_HOUR: int = 8
     REPORT_TIME_MINUTE: int = 0
+    REPORT_CONTEXT_LIMIT: int = 2000
 
     # Learning
     LEARNING_BATCH_SIZE: int = 5

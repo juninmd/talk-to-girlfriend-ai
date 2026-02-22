@@ -49,6 +49,7 @@ async def test_generate_daily_report_with_messages(mock_session, mock_client, mo
 
         with patch("backend.services.reporting.settings") as mock_settings:
             mock_settings.REPORT_CHANNEL_ID = -100
+            mock_settings.REPORT_CONTEXT_LIMIT = 1000
 
             mock_entity = MagicMock()
             mock_entity.id = 100
@@ -77,6 +78,7 @@ async def test_generate_daily_report_no_channel_id(mock_session, mock_client, mo
 
         with patch("backend.services.reporting.settings") as mock_settings:
             mock_settings.REPORT_CHANNEL_ID = None
+            mock_settings.REPORT_CONTEXT_LIMIT = 1000
             service = ReportingService()
             await service.generate_daily_report()
 

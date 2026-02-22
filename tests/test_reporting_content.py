@@ -72,6 +72,7 @@ async def test_reporting_grouping_logic():
                 # Patch REPORT_CHANNEL_ID to ensure execution proceeds
                 with patch("backend.services.reporting.settings") as mock_settings:
                     mock_settings.REPORT_CHANNEL_ID = 999
+                    mock_settings.REPORT_CONTEXT_LIMIT = 2000
                     mock_summarize.return_value = "Summary generated."
 
                     # Act

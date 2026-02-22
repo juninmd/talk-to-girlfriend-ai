@@ -12,8 +12,6 @@ from backend.utils import async_retry, format_entity
 
 logger = logging.getLogger(__name__)
 
-MAX_REPORT_MESSAGES = 1000
-
 
 class ReportingService:
     """
@@ -122,10 +120,14 @@ class ReportingService:
 """.strip()
 
         # Limit data to avoid huge context
-        if total_msgs > MAX_REPORT_MESSAGES:
+        limit = settings.REPORT_CONTEXT_LIMIT
+        if limit > 5000:
             logger.warning(
-                f"Too many messages ({total_msgs}), truncating to {MAX_REPORT_MESSAGES} for report."
+                f"REPORT_CONTEXT_LIMIT ({limit}) is very high. Watch out for API limits."
             )
+
+        if total_msgs > limit:
+            logger.warning(f"Too many messages ({total_msgs}), truncating to {limit} for report.")
             # Flatten to (chat_title, msg)
             all_items = []
             for title, msgs in data.items():
@@ -136,7 +138,7 @@ class ReportingService:
             all_items.sort(key=lambda x: x[1].date, reverse=True)
 
             # Take top N
-            all_items = all_items[:MAX_REPORT_MESSAGES]
+            all_items = all_items[:limit]
 
             # Re-group (and sort back to chronological for the report)
             all_items.sort(key=lambda x: x[1].date)
@@ -148,7 +150,7 @@ class ReportingService:
                 new_data[title].append(m)
 
             data = new_data
-            stats_text += f"\n(Truncado para {MAX_REPORT_MESSAGES} mensagens recentes)"
+            stats_text += f"\n(Truncado para {limit} mensagens recentes)"
 
         summary = await ai_service.summarize_conversations(data)
 
