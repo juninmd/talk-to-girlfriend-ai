@@ -189,17 +189,65 @@ class AIService:
             history = sorted(history, key=lambda x: x.date)
 
             # Retrieve facts for chat OR sender (context + personalization)
+            # Implementing Tiered Retrieval for better context retention
             if sender_id:
-                query = select(Fact).where(
-                    or_(Fact.chat_id == chat_id, Fact.sender_id == sender_id)
-                )
+                base_cond = or_(Fact.chat_id == chat_id, Fact.sender_id == sender_id)
             else:
-                query = select(Fact).where(Fact.chat_id == chat_id)
+                base_cond = (Fact.chat_id == chat_id)
 
-            facts = session.exec(
-                query.order_by(Fact.created_at.desc()).limit(settings.AI_CONTEXT_FACT_LIMIT)
-            ).all()
-            return history, facts
+            limit = settings.AI_CONTEXT_FACT_LIMIT
+            collected_ids = set()
+            final_facts = []
+
+            # Tier 1: Core Identity (Personal) - High Priority
+            # We want to ensure we always remember who the user is and what they like
+            core_cats = ["pessoal", "relacionamento", "opiniao", "preference"]
+            q1 = (
+                select(Fact)
+                .where(base_cond)
+                .where(Fact.category.in_(core_cats))
+                .order_by(Fact.created_at.desc())
+                .limit(10)
+            )
+            facts_core = session.exec(q1).all()
+            for f in facts_core:
+                if f.id not in collected_ids:
+                    final_facts.append(f)
+                    collected_ids.add(f.id)
+
+            # Tier 2: Work Identity (Tech/Work) - Medium Priority
+            # Ensuring technical context is preserved
+            work_cats = ["tech", "trabalho"]
+            q2 = (
+                select(Fact)
+                .where(base_cond)
+                .where(Fact.category.in_(work_cats))
+                .order_by(Fact.created_at.desc())
+                .limit(20)
+            )
+            facts_work = session.exec(q2).all()
+            for f in facts_work:
+                if f.id not in collected_ids:
+                    final_facts.append(f)
+                    collected_ids.add(f.id)
+
+            # Tier 3: Recent General (Fill remaining slots)
+            remaining = limit - len(final_facts)
+            if remaining > 0:
+                q3 = (
+                    select(Fact)
+                    .where(base_cond)
+                    .where(Fact.id.notin_(list(collected_ids)))
+                    .order_by(Fact.created_at.desc())
+                    .limit(remaining)
+                )
+                facts_general = session.exec(q3).all()
+                final_facts.extend(facts_general)
+
+            # Sort by date descending (Newest first) so the AI sees the latest info at the top
+            final_facts.sort(key=lambda x: x.created_at, reverse=True)
+
+            return history, final_facts
 
     def _format_relative_time(self, dt: datetime) -> str:
         """Helper to format datetime relatively (e.g. Today 14:00, Yesterday 10:00)."""
