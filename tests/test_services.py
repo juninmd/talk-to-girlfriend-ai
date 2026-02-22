@@ -63,6 +63,7 @@ async def test_reporting_service_generate_daily_report():
     ):
 
         mock_settings.REPORT_CHANNEL_ID = 123456
+        mock_settings.REPORT_CONTEXT_LIMIT = 2000
 
         # Mock fetch messages
         mock_session = MagicMock()

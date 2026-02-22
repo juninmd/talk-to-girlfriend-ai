@@ -122,12 +122,12 @@ class ReportingService:
         # Limit data to avoid huge context
         limit = settings.REPORT_CONTEXT_LIMIT
         if limit > 5000:
-            logger.warning(f"REPORT_CONTEXT_LIMIT ({limit}) is very high. Watch out for API limits.")
+            logger.warning(
+                f"REPORT_CONTEXT_LIMIT ({limit}) is very high. Watch out for API limits."
+            )
 
         if total_msgs > limit:
-            logger.warning(
-                f"Too many messages ({total_msgs}), truncating to {limit} for report."
-            )
+            logger.warning(f"Too many messages ({total_msgs}), truncating to {limit} for report.")
             # Flatten to (chat_title, msg)
             all_items = []
             for title, msgs in data.items():

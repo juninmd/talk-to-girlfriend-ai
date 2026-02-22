@@ -33,6 +33,8 @@ async def test_learning_service_ingest_history_batch_processing():
     # Mock internal methods
     with patch.object(service, "_save_message_to_db", return_value=1):
         with patch.object(service, "_analyze_and_extract", new_callable=AsyncMock) as mock_analyze:
+            # Mock DB check for last synced ID to avoid SQL error
+            service._get_last_synced_id = MagicMock(return_value=0)
 
             # Use MagicMock with a Future return value for asyncio.to_thread
             # to avoid AsyncMock warning complexities.
@@ -118,6 +120,7 @@ async def test_reporting_service_grouping_logic():
             # Mock REPORT_CHANNEL_ID
             with patch("backend.services.reporting.settings") as mock_settings:
                 mock_settings.REPORT_CHANNEL_ID = 999
+                mock_settings.REPORT_CONTEXT_LIMIT = 2000
                 mock_client.send_message.return_value = True
 
                 await service.generate_daily_report()

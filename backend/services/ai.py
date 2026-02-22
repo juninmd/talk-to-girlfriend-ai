@@ -193,7 +193,7 @@ class AIService:
             if sender_id:
                 base_cond = or_(Fact.chat_id == chat_id, Fact.sender_id == sender_id)
             else:
-                base_cond = (Fact.chat_id == chat_id)
+                base_cond = Fact.chat_id == chat_id
 
             limit = settings.AI_CONTEXT_FACT_LIMIT
             collected_ids = set()

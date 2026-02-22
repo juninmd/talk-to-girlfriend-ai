@@ -1,8 +1,10 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from datetime import datetime, timedelta
+
 # Add backend to path if needed, or rely on python -m pytest
 from backend.services.ai import AIService
+
 
 class MockFact:
     def __init__(self, id, category, created_at):
@@ -14,22 +16,22 @@ class MockFact:
         self.chat_id = 1
         self.sender_id = 1
 
+
 @pytest.fixture
 def mock_session_cls():
     with patch("backend.services.ai.Session") as mock:
         yield mock
+
 
 @pytest.fixture
 def mock_engine():
     with patch("backend.services.ai.engine") as mock:
         yield mock
 
+
 def create_fact(id, category, days_ago):
-    return MockFact(
-        id=id,
-        category=category,
-        created_at=datetime.now() - timedelta(days=days_ago)
-    )
+    return MockFact(id=id, category=category, created_at=datetime.now() - timedelta(days=days_ago))
+
 
 def test_get_context_prioritization(mock_session_cls, mock_engine):
     # Setup Service
@@ -52,7 +54,7 @@ def test_get_context_prioritization(mock_session_cls, mock_engine):
     res_history.all.return_value = []
 
     res_tier1 = MagicMock()
-    res_tier1.all.return_value = personal_facts # Returns 5
+    res_tier1.all.return_value = personal_facts  # Returns 5
 
     res_tier2 = MagicMock()
     # The DB query would limit to 20, so we simulate that
