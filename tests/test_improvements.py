@@ -81,3 +81,123 @@ async def test_reporting_service_channel_resolution():
     with patch("backend.services.reporting.settings.REPORT_CHANNEL_ID", None):
         entity = await reporting_service._resolve_target_entity()
         assert entity.id == 111
+
+
+@pytest.mark.asyncio
+async def test_scheduler_configuration():
+    """
+    Verifies that the scheduler is initialized and the reporting job is added correctly.
+    """
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from backend.services.reporting import reporting_service
+    from backend.settings import settings
+
+    with patch("apscheduler.schedulers.asyncio.AsyncIOScheduler.add_job") as mock_add_job, \
+         patch("apscheduler.schedulers.asyncio.AsyncIOScheduler.start") as mock_start:
+
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(
+            reporting_service.generate_daily_report,
+            "cron",
+            hour=settings.REPORT_TIME_HOUR,
+            minute=settings.REPORT_TIME_MINUTE,
+        )
+        scheduler.start()
+
+        mock_add_job.assert_called_once()
+        args, kwargs = mock_add_job.call_args
+
+        # Check job function
+        assert args[0] == reporting_service.generate_daily_report
+        # Check trigger type
+        assert args[1] == "cron"
+        # Check time
+        assert kwargs["hour"] == settings.REPORT_TIME_HOUR
+        assert kwargs["minute"] == settings.REPORT_TIME_MINUTE
+
+        mock_start.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_conversation_reaction_parsing():
+    """
+    Verifies that ConversationService correctly parses [REACTION: emoji] tags
+    and calls the send_reaction tool.
+    """
+    from backend.services.conversation import ConversationService
+    from backend.tools.reactions import send_reaction
+
+    mock_client = MagicMock() # Use MagicMock for client structure
+    mock_ctx = AsyncMock()    # The context manager returned by action()
+    mock_client.action.return_value = mock_ctx
+    mock_client.send_message = AsyncMock()
+
+    service = ConversationService()
+    service.client = mock_client # Inject mock client
+
+    # Mock AI response with reaction tag
+    ai_response = "[REACTION: 😂] Hahaha, boa!"
+
+    # Mock dependencies
+    with patch("backend.services.conversation.ai_service.generate_natural_response", return_value=ai_response) as mock_ai, \
+         patch("backend.services.conversation.send_reaction", new_callable=AsyncMock) as mock_send_reaction, \
+         patch("asyncio.sleep", new_callable=AsyncMock): # Skip sleeps
+
+        chat_id = 123
+        msg_id = 456
+        user_msg = "Joke"
+        sender_name = "User"
+
+        # Execute
+        await service._generate_and_send_reply(
+            chat_id=chat_id,
+            user_message=user_msg,
+            sender_name=sender_name,
+            reply_to_msg_id=msg_id
+        )
+
+        # Verify Reaction was sent
+        mock_send_reaction.assert_called_once_with(chat_id, msg_id, "😂")
+
+        # Verify Message was sent (without tag)
+        mock_client.send_message.assert_called_once_with(chat_id, "Hahaha, boa!", reply_to=msg_id)
+
+
+@pytest.mark.asyncio
+async def test_conversation_reaction_only():
+    """
+    Verifies that ConversationService handles response with ONLY a reaction tag.
+    """
+    from backend.services.conversation import ConversationService
+    from backend.tools.reactions import send_reaction
+
+    mock_client = MagicMock()
+    mock_ctx = AsyncMock()
+    mock_client.action.return_value = mock_ctx
+    mock_client.send_message = AsyncMock()
+
+    service = ConversationService()
+    service.client = mock_client
+
+    # Mock AI response with ONLY reaction
+    ai_response = "[REACTION: 👍]"
+
+    with patch("backend.services.conversation.ai_service.generate_natural_response", return_value=ai_response), \
+         patch("backend.services.conversation.send_reaction", new_callable=AsyncMock) as mock_send_reaction, \
+         patch("asyncio.sleep", new_callable=AsyncMock):
+
+        chat_id = 123
+        msg_id = 456
+
+        await service._generate_and_send_reply(
+            chat_id=chat_id,
+            user_message="Ok",
+            sender_name="User",
+            reply_to_msg_id=msg_id
+        )
+
+        # Verify Reaction sent
+        mock_send_reaction.assert_called_once_with(chat_id, msg_id, "👍")
+
+        # Verify NO message sent
+        mock_client.send_message.assert_not_called()

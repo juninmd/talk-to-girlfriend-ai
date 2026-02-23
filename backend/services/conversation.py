@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import random
+import re
 from typing import Optional
 from telethon.tl.types import User
 from backend.client import client
@@ -8,6 +9,7 @@ from backend.services.ai import ai_service
 from backend.services.command import CommandService
 from backend.settings import settings
 from backend.utils import get_sender_name
+from backend.tools.reactions import send_reaction
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +92,21 @@ class ConversationService:
                 response_text = await ai_service.generate_natural_response(
                     chat_id, user_message, sender_name, sender_id
                 )
+
+                # Check for reaction tag [REACTION: <emoji>]
+                reaction_match = re.search(r"\[REACTION:\s*(.+?)\]", response_text)
+                if reaction_match:
+                    emoji = reaction_match.group(1).strip()
+                    # Remove the tag from the text
+                    response_text = response_text.replace(reaction_match.group(0), "").strip()
+
+                    # Send reaction if we have a message ID to react to
+                    if reply_to_msg_id:
+                        try:
+                            await send_reaction(chat_id, reply_to_msg_id, emoji)
+                            logger.info(f"Reacted with {emoji} to message {reply_to_msg_id}")
+                        except Exception as e:
+                            logger.error(f"Failed to send reaction: {e}")
 
                 # Wait a bit more to simulate typing the response
                 base_typing_delay = len(response_text) * settings.CONVERSATION_TYPING_SPEED

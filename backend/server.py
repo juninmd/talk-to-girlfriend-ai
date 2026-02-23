@@ -351,6 +351,11 @@ async def _main() -> None:
         )
         scheduler.start()
 
+        # Log scheduled jobs
+        jobs = scheduler.get_jobs()
+        for job in jobs:
+            logger.info(f"Scheduled job '{job.name}' (Trigger: {job.trigger}) next run: {job.next_run_time}")
+
         logger.info("Telegram client started. Running MCP server...")
         await mcp.run_stdio_async()
     except Exception as e:
