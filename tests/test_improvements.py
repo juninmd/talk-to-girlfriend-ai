@@ -92,8 +92,10 @@ async def test_scheduler_configuration():
     from backend.services.reporting import reporting_service
     from backend.settings import settings
 
-    with patch("apscheduler.schedulers.asyncio.AsyncIOScheduler.add_job") as mock_add_job, \
-         patch("apscheduler.schedulers.asyncio.AsyncIOScheduler.start") as mock_start:
+    with (
+        patch("apscheduler.schedulers.asyncio.AsyncIOScheduler.add_job") as mock_add_job,
+        patch("apscheduler.schedulers.asyncio.AsyncIOScheduler.start") as mock_start,
+    ):
 
         scheduler = AsyncIOScheduler()
         scheduler.add_job(
@@ -125,23 +127,29 @@ async def test_conversation_reaction_parsing():
     and calls the send_reaction tool.
     """
     from backend.services.conversation import ConversationService
-    from backend.tools.reactions import send_reaction
 
-    mock_client = MagicMock() # Use MagicMock for client structure
-    mock_ctx = AsyncMock()    # The context manager returned by action()
+    mock_client = MagicMock()  # Use MagicMock for client structure
+    mock_ctx = AsyncMock()  # The context manager returned by action()
     mock_client.action.return_value = mock_ctx
     mock_client.send_message = AsyncMock()
 
     service = ConversationService()
-    service.client = mock_client # Inject mock client
+    service.client = mock_client  # Inject mock client
 
     # Mock AI response with reaction tag
     ai_response = "[REACTION: 😂] Hahaha, boa!"
 
     # Mock dependencies
-    with patch("backend.services.conversation.ai_service.generate_natural_response", return_value=ai_response) as mock_ai, \
-         patch("backend.services.conversation.send_reaction", new_callable=AsyncMock) as mock_send_reaction, \
-         patch("asyncio.sleep", new_callable=AsyncMock): # Skip sleeps
+    with (
+        patch(
+            "backend.services.conversation.ai_service.generate_natural_response",
+            return_value=ai_response,
+        ),
+        patch(
+            "backend.services.conversation.send_reaction", new_callable=AsyncMock
+        ) as mock_send_reaction,
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):  # Skip sleeps
 
         chat_id = 123
         msg_id = 456
@@ -153,7 +161,7 @@ async def test_conversation_reaction_parsing():
             chat_id=chat_id,
             user_message=user_msg,
             sender_name=sender_name,
-            reply_to_msg_id=msg_id
+            reply_to_msg_id=msg_id,
         )
 
         # Verify Reaction was sent
@@ -169,7 +177,6 @@ async def test_conversation_reaction_only():
     Verifies that ConversationService handles response with ONLY a reaction tag.
     """
     from backend.services.conversation import ConversationService
-    from backend.tools.reactions import send_reaction
 
     mock_client = MagicMock()
     mock_ctx = AsyncMock()
@@ -182,18 +189,22 @@ async def test_conversation_reaction_only():
     # Mock AI response with ONLY reaction
     ai_response = "[REACTION: 👍]"
 
-    with patch("backend.services.conversation.ai_service.generate_natural_response", return_value=ai_response), \
-         patch("backend.services.conversation.send_reaction", new_callable=AsyncMock) as mock_send_reaction, \
-         patch("asyncio.sleep", new_callable=AsyncMock):
+    with (
+        patch(
+            "backend.services.conversation.ai_service.generate_natural_response",
+            return_value=ai_response,
+        ),
+        patch(
+            "backend.services.conversation.send_reaction", new_callable=AsyncMock
+        ) as mock_send_reaction,
+        patch("asyncio.sleep", new_callable=AsyncMock),
+    ):
 
         chat_id = 123
         msg_id = 456
 
         await service._generate_and_send_reply(
-            chat_id=chat_id,
-            user_message="Ok",
-            sender_name="User",
-            reply_to_msg_id=msg_id
+            chat_id=chat_id, user_message="Ok", sender_name="User", reply_to_msg_id=msg_id
         )
 
         # Verify Reaction sent
