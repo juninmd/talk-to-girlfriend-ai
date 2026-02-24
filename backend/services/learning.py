@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from telethon import events
@@ -14,6 +15,13 @@ from backend.utils import get_sender_name
 logger = logging.getLogger(__name__)
 
 REPORT_PREFIXES = ("# 📅 Relatório Diário", "# 📅 Relatório")
+
+
+@dataclass
+class LearningResult:
+    messages_count: int
+    facts_count: int
+    message: str
 
 
 class LearningService:
@@ -36,10 +44,10 @@ class LearningService:
 
     async def ingest_history(
         self, chat_id: int, limit: int = 100, force_rescan: bool = False
-    ) -> str:
+    ) -> LearningResult:
         """
         Fetches past messages and saves them to DB. Learns from recent ones.
-        Returns a summary string.
+        Returns a LearningResult object.
 
         Args:
             chat_id: The ID of the chat to learn from.
@@ -68,9 +76,43 @@ class LearningService:
                 msg = f"Ingested {count} new messages. Learned {facts_count} new facts."
 
             logger.info(f"Chat {chat_id}: {msg}")
-            return msg
+            return LearningResult(
+                messages_count=count,
+                facts_count=facts_count,
+                message=msg,
+            )
         except Exception as e:
             logger.error(f"Error ingesting history: {e}")
+            return LearningResult(
+                messages_count=0,
+                facts_count=0,
+                message=f"Error: {str(e)}",
+            )
+
+    async def ingest_all_history(self, limit_dialogs: int = 10, msgs_limit: int = 30) -> str:
+        """
+        Iterates over the most recent dialogs and ingests history for each.
+        """
+        try:
+            dialogs = await self.client.get_dialogs(limit=limit_dialogs)
+            total_learned = 0
+            chats_processed = 0
+
+            for dialog in dialogs:
+                if dialog.is_channel:
+                    continue  # Skip channels to focus on conversations
+
+                # Ingest history for this chat
+                result = await self.ingest_history(dialog.id, limit=msgs_limit, force_rescan=False)
+                total_learned += result.facts_count
+                chats_processed += 1
+
+                # Sleep to avoid hitting rate limits too hard
+                await asyncio.sleep(2)
+
+            return f"Processed {chats_processed} chats. Total new facts learned: {total_learned}."
+        except Exception as e:
+            logger.error(f"Error in global ingestion: {e}")
             return f"Error: {str(e)}"
 
     async def _fetch_history_messages(self, entity: Any, limit: int, min_id: int) -> List[Any]:

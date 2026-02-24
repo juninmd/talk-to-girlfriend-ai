@@ -32,6 +32,10 @@ class CommandService:
             await self._handle_help(chat_id)
             return True
 
+        if text_lower.startswith("/aprender_tudo"):
+            await self._handle_learn_all(chat_id, text)
+            return True
+
         if text_lower.startswith("/aprender"):
             await self._handle_learn(chat_id, text)
             return True
@@ -62,6 +66,7 @@ class CommandService:
             "**Comandos:**\n"
             "`/start` - Esse texto aqui.\n"
             "`/aprender [n]` - Leio as últimas n mensagens pra ficar por dentro.\n"
+            "`/aprender_tudo [n]` - Varro os últimos n chats em busca de conhecimento.\n"
             "`/relatorio` - Resumo rápido dessa conversa.\n"
             "`/relatorio_global` - O resumo oficial do dia (vai pro canal).\n"
             "`/fatos` - O que eu sei sobre você (cuidado com a verdade)."
@@ -87,7 +92,24 @@ class CommandService:
             f"🧠 Deixa comigo. Lendo as últimas {limit} mensagens pra pegar o contexto...",
         )
 
-        status_msg = await learning_service.ingest_history(chat_id, limit, force_rescan=True)
+        result = await learning_service.ingest_history(chat_id, limit, force_rescan=True)
+        await self.client.send_message(chat_id, f"✅ {result.message}")
+
+    async def _handle_learn_all(self, chat_id: int, text: str):
+        parts = text.split()
+        limit_dialogs = 10
+        if len(parts) > 1:
+            try:
+                limit_dialogs = int(parts[1])
+            except ValueError:
+                pass
+
+        await self.client.send_message(
+            chat_id,
+            f"🧠 Iniciando varredura em {limit_dialogs} chats recentes... Isso pode demorar.",
+        )
+
+        status_msg = await learning_service.ingest_all_history(limit_dialogs=limit_dialogs)
         await self.client.send_message(chat_id, f"✅ {status_msg}")
 
     async def _handle_global_report(self, chat_id: int):
