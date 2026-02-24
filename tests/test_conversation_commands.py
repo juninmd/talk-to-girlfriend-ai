@@ -20,7 +20,9 @@ def service(mock_client):
 @pytest.mark.asyncio
 async def test_handle_commands_aprender(service):
     with patch("backend.services.command.learning_service") as mock_learn:
-        mock_learn.ingest_history = AsyncMock(return_value="Ingested 10 messages")
+        result_obj = MagicMock()
+        result_obj.message = "Ingested 10 messages"
+        mock_learn.ingest_history = AsyncMock(return_value=result_obj)
 
         result = await service.handle_command(123, "/aprender 20")
 

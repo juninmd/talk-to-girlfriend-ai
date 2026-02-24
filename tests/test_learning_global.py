@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from backend.services.learning import LearningService, LearningResult
 
+
 @pytest.mark.asyncio
 async def test_ingest_all_history():
     """Test global ingestion of multiple chats."""
@@ -30,8 +31,16 @@ async def test_ingest_all_history():
     # First call returns 2 facts, second returns 3 facts
     with patch.object(service, "ingest_history") as mock_ingest:
         mock_ingest.side_effect = [
-            LearningResult(messages_count=10, facts_count=2, message="Ingested 10 messages. Learned 2 new facts."),
-            LearningResult(messages_count=5, facts_count=3, message="Ingested 5 messages. Learned 3 new facts.")
+            LearningResult(
+                messages_count=10,
+                facts_count=2,
+                message="Ingested 10 messages. Learned 2 new facts.",
+            ),
+            LearningResult(
+                messages_count=5,
+                facts_count=3,
+                message="Ingested 5 messages. Learned 3 new facts.",
+            ),
         ]
 
         # 3. Run Method
