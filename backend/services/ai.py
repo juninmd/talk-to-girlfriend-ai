@@ -75,6 +75,9 @@ class AIService:
         if not self.client:
             return []
 
+        if not text:
+            return []
+
         # Optimization: Skip short texts (likely "ok", "👍", etc.)
         if len(text.strip()) < 10:
             return []

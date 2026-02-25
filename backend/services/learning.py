@@ -223,6 +223,39 @@ class LearningService:
         logger.info("Starting LearningService event listener...")
         self.client.add_event_handler(self.handle_message_learning, events.NewMessage)
 
+        if settings.AUTO_LEARN_ON_STARTUP:
+            asyncio.create_task(self._background_backfill_task())
+
+    def _check_if_learning_needed(self) -> bool:
+        """Checks if the database has very few facts, indicating need for backfill."""
+        try:
+            with Session(engine) as session:
+                # Check if we have less than 10 facts
+                statement = select(func.count(Fact.id))
+                count = session.exec(statement).one()
+                return count < 10
+        except Exception as e:
+            logger.error(f"Error checking knowledge base size: {e}")
+            return False
+
+    async def _background_backfill_task(self):
+        """Background task to backfill history if needed."""
+        logger.info("Auto-learning: Checking if backfill is needed...")
+        try:
+            # Run check in thread to avoid blocking
+            needed = await asyncio.to_thread(self._check_if_learning_needed)
+            if needed:
+                logger.info("Auto-learning: Backfill needed. Starting in 10 seconds...")
+                # Give time for connection to stabilize
+                await asyncio.sleep(10)
+                await self.ingest_all_history(
+                    limit_dialogs=10, msgs_limit=settings.LEARNING_HISTORY_LIMIT
+                )
+            else:
+                logger.info("Auto-learning: Knowledge base sufficient. Skipping backfill.")
+        except Exception as e:
+            logger.error(f"Auto-learning failed: {e}", exc_info=True)
+
     async def _save_message_to_db(self, msg_data: Dict[str, Any]) -> Optional[int]:
         """Runs synchronous DB save in a thread. Returns DB ID if saved, None if error/duplicate."""
         try:
