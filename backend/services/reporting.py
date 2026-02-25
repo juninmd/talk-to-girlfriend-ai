@@ -89,25 +89,44 @@ class ReportingService:
     async def _resolve_chat_titles(
         self, grouped_msgs: Dict[int, List[Message]]
     ) -> Dict[str, List[Message]]:
-        """Resolves chat IDs to human-readable titles."""
+        """Resolves chat IDs to human-readable titles using asyncio.gather."""
         final_data = {}
-        for chat_id, msgs in grouped_msgs.items():
-            title = f"Chat {chat_id}"
+        tasks = []
+        chat_ids = list(grouped_msgs.keys())
 
-            # Check cache first
-            if chat_id in self._title_cache:
-                title = self._title_cache[chat_id]
-            else:
-                try:
-                    entity = await self.client.get_entity(chat_id)
-                    formatted = format_entity(entity)
-                    title = formatted.get("name", title)
-                    self._title_cache[chat_id] = title
-                except Exception as e:
-                    logger.warning(f"Could not resolve title for chat {chat_id}: {e}")
+        # Define a helper function for single resolution
+        sem = asyncio.Semaphore(10)
 
-            unique_key = f"{title} (ID: {chat_id})"
-            final_data[unique_key] = msgs
+        async def resolve_one(cid):
+            async with sem:
+                title = f"Chat {cid}"
+                if cid in self._title_cache:
+                    title = self._title_cache[cid]
+                else:
+                    try:
+                        entity = await self.client.get_entity(cid)
+                        formatted = format_entity(entity)
+                        title = formatted.get("name", title)
+                        self._title_cache[cid] = title
+                    except Exception as e:
+                        logger.warning(f"Could not resolve title for chat {cid}: {e}")
+                return cid, title
+
+        # Create tasks
+        for cid in chat_ids:
+            tasks.append(resolve_one(cid))
+
+        # Run safely
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for result in results:
+            if isinstance(result, Exception):
+                continue
+
+            cid, title = result
+            unique_key = f"{title} (ID: {cid})"
+            final_data[unique_key] = grouped_msgs[cid]
+
         return final_data
 
     async def _generate_report_content(
@@ -127,30 +146,37 @@ class ReportingService:
             )
 
         if total_msgs > limit:
-            logger.warning(f"Too many messages ({total_msgs}), truncating to {limit} for report.")
-            # Flatten to (chat_title, msg)
-            all_items = []
+            logger.warning(f"Too many messages ({total_msgs}). Applying smart truncation...")
+
+            # Smart Truncation:
+            # 1. Take top 50 messages from each chat (to ensure diversity)
+            # 2. Collect all, sort by date
+            # 3. Truncate to limit
+
+            truncated_items = []
             for title, msgs in data.items():
-                for m in msgs:
-                    all_items.append((title, m))
+                # Sort chat msgs by date desc (newest first)
+                chat_msgs_sorted = sorted(msgs, key=lambda m: m.date, reverse=True)
+                # Take top 50
+                truncated_items.extend([(title, m) for m in chat_msgs_sorted[:50]])
 
-            # Sort by date descending (newest first)
-            all_items.sort(key=lambda x: x[1].date, reverse=True)
+            # Now sort everything by date desc to apply global limit
+            truncated_items.sort(key=lambda x: x[1].date, reverse=True)
 
-            # Take top N
-            all_items = all_items[:limit]
+            # Global limit
+            truncated_items = truncated_items[:limit]
 
             # Re-group (and sort back to chronological for the report)
-            all_items.sort(key=lambda x: x[1].date)
+            truncated_items.sort(key=lambda x: x[1].date)
 
             new_data: Dict[str, List[Message]] = {}
-            for title, m in all_items:
+            for title, m in truncated_items:
                 if title not in new_data:
                     new_data[title] = []
                 new_data[title].append(m)
 
             data = new_data
-            stats_text += f"\n(Truncado para {limit} mensagens recentes)"
+            stats_text += f"\n(Truncado inteligentemente para {len(truncated_items)} mensagens)"
 
         summary = await ai_service.summarize_conversations(data)
 

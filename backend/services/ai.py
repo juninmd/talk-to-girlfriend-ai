@@ -75,8 +75,7 @@ class AIService:
         if not self.client:
             return []
 
-        # Optimization: Skip short texts (likely "ok", "👍", etc.)
-        if len(text.strip()) < 10:
+        if not text or len(text.strip()) < 10:
             return []
 
         # Safe formatting
@@ -87,27 +86,30 @@ class AIService:
             return []
 
         try:
-            response = await self.client.aio.models.generate_content(
-                model=settings.AI_MODEL_NAME,
-                contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json"),
-            )
-            raw_text = self._clean_json_response(response.text)
-
-            try:
-                facts = json.loads(raw_text)
-            except json.JSONDecodeError as e:
-                logger.warning(f"Failed to parse JSON: {e}. Text: {raw_text[:100]}...")
-                return []
-            except Exception as e:
-                logger.error(f"Unexpected error parsing JSON: {e}")
-                return []
-
-            return self._validate_facts(facts)
-
+            return await self._generate_and_parse_facts(prompt)
         except Exception as e:
             logger.error(f"Error extracting facts: {e}")
             return []
+
+    async def _generate_and_parse_facts(self, prompt: str) -> List[Dict[str, Any]]:
+        """Generates content from LLM and parses the JSON response."""
+        response = await self.client.aio.models.generate_content(
+            model=settings.AI_MODEL_NAME,
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+        raw_text = self._clean_json_response(response.text)
+
+        try:
+            facts = json.loads(raw_text)
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse JSON: {e}. Text: {raw_text[:100]}...")
+            return []
+        except Exception as e:
+            logger.error(f"Unexpected error parsing JSON: {e}")
+            return []
+
+        return self._validate_facts(facts)
 
     def _validate_facts(self, facts: Any) -> List[Dict[str, Any]]:
         """Validates and processes extracted facts against ExtractedFact schema."""
