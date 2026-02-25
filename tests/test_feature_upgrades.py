@@ -6,6 +6,7 @@ from backend.services.learning import LearningService
 from backend.services.ai import AIService
 from backend.database import Message
 
+
 @pytest.mark.asyncio
 async def test_reporting_smart_truncation():
     """
@@ -16,7 +17,9 @@ async def test_reporting_smart_truncation():
     reporting_service.client = MagicMock()
 
     # Mock AI Service summary to avoid API call
-    with patch("backend.services.reporting.ai_service.summarize_conversations", new_callable=AsyncMock) as mock_summary:
+    with patch(
+        "backend.services.reporting.ai_service.summarize_conversations", new_callable=AsyncMock
+    ) as mock_summary:
         mock_summary.return_value = "Summary OK"
 
         # Setup data: 3 Chats.
@@ -26,17 +29,40 @@ async def test_reporting_smart_truncation():
 
         now = datetime.now(timezone.utc)
 
-        chat_a_msgs = [Message(id=i, telegram_message_id=i, chat_id=1, text=f"A{i}", date=now - timedelta(minutes=i)) for i in range(100)]
-        chat_b_msgs = [Message(id=100+i, telegram_message_id=100+i, chat_id=2, text=f"B{i}", date=now - timedelta(minutes=i)) for i in range(10)]
+        chat_a_msgs = [
+            Message(
+                id=i,
+                telegram_message_id=i,
+                chat_id=1,
+                text=f"A{i}",
+                date=now - timedelta(minutes=i),
+            )
+            for i in range(100)
+        ]
+        chat_b_msgs = [
+            Message(
+                id=100 + i,
+                telegram_message_id=100 + i,
+                chat_id=2,
+                text=f"B{i}",
+                date=now - timedelta(minutes=i),
+            )
+            for i in range(10)
+        ]
 
         # Chat C is older
-        chat_c_msgs = [Message(id=200+i, telegram_message_id=200+i, chat_id=3, text=f"C{i}", date=now - timedelta(hours=1, minutes=i)) for i in range(100)]
+        chat_c_msgs = [
+            Message(
+                id=200 + i,
+                telegram_message_id=200 + i,
+                chat_id=3,
+                text=f"C{i}",
+                date=now - timedelta(hours=1, minutes=i),
+            )
+            for i in range(100)
+        ]
 
-        data = {
-            "Chat A": chat_a_msgs,
-            "Chat B": chat_b_msgs,
-            "Chat C": chat_c_msgs
-        }
+        data = {"Chat A": chat_a_msgs, "Chat B": chat_b_msgs, "Chat C": chat_c_msgs}
 
         # We set Global Limit to 70.
         # Smart Truncation Step 1 (Per chat limit 50):
@@ -73,6 +99,7 @@ async def test_reporting_smart_truncation():
             assert len(final_data["Chat B"]) == 10
             assert len(final_data["Chat C"]) == 10
 
+
 @pytest.mark.asyncio
 async def test_learning_service_startup_logic():
     """
@@ -87,7 +114,7 @@ async def test_learning_service_startup_logic():
     with patch("backend.services.learning.settings.AUTO_LEARN_ON_STARTUP", True):
         # Mock _check_if_learning_needed
         with patch.object(learning_service, "_check_if_learning_needed", return_value=True):
-             # Mock asyncio.sleep to avoid wait
+            # Mock asyncio.sleep to avoid wait
             with patch("asyncio.sleep", new_callable=AsyncMock):
                 # Call logic directly or trigger the task?
                 # start_listening spawns the task.
@@ -97,6 +124,7 @@ async def test_learning_service_startup_logic():
                 await learning_service._background_backfill_task()
 
                 learning_service.ingest_all_history.assert_called_once()
+
 
 @pytest.mark.asyncio
 async def test_ai_service_extract_facts_robustness():

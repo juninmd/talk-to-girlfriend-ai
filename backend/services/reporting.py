@@ -176,9 +176,7 @@ class ReportingService:
                 new_data[title].append(m)
 
             data = new_data
-            stats_text += (
-                f"\n(Truncado inteligentemente para {len(truncated_items)} mensagens)"
-            )
+            stats_text += f"\n(Truncado inteligentemente para {len(truncated_items)} mensagens)"
 
         summary = await ai_service.summarize_conversations(data)
 
