@@ -107,6 +107,9 @@ class LearningService:
                 total_learned += result.facts_count
                 chats_processed += 1
 
+                if chats_processed % 5 == 0:
+                    logger.info(f"Global Ingestion: Processed {chats_processed}/{len(dialogs)} chats so far...")
+
                 # Sleep to avoid hitting rate limits too hard
                 await asyncio.sleep(2)
 
@@ -175,6 +178,7 @@ class LearningService:
         # Process oldest first for logical order in DB
         for msg in reversed(messages_list):
             if not msg.message:
+                logger.debug(f"Skipping empty message ID {msg.id} in chat {chat_id}")
                 continue
 
             msg_data = self._create_message_data(msg, chat_id)

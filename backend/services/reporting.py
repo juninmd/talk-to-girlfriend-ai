@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Tuple
 
 from sqlmodel import Session, select
 from backend.database import engine, Message
@@ -129,6 +129,38 @@ class ReportingService:
 
         return final_data
 
+    def _smart_truncate_messages(
+        self, data: Dict[str, List[Message]], limit: int
+    ) -> Tuple[Dict[str, List[Message]], int]:
+        """
+        Applies smart truncation to the message data.
+        Prioritizes diversity (top 50 from each chat) then global recency.
+        Returns the truncated data and the new total message count.
+        """
+        truncated_items = []
+        for title, msgs in data.items():
+            # Sort chat msgs by date desc (newest first)
+            chat_msgs_sorted = sorted(msgs, key=lambda m: m.date, reverse=True)
+            # Take top 50
+            truncated_items.extend([(title, m) for m in chat_msgs_sorted[:50]])
+
+        # Now sort everything by date desc to apply global limit
+        truncated_items.sort(key=lambda x: x[1].date, reverse=True)
+
+        # Global limit
+        truncated_items = truncated_items[:limit]
+
+        # Re-group (and sort back to chronological for the report)
+        truncated_items.sort(key=lambda x: x[1].date)
+
+        new_data: Dict[str, List[Message]] = {}
+        for title, m in truncated_items:
+            if title not in new_data:
+                new_data[title] = []
+            new_data[title].append(m)
+
+        return new_data, len(truncated_items)
+
     async def _generate_report_content(
         self, data: Dict[str, List[Message]], total_msgs: int, unique_chats: int
     ) -> str:
@@ -147,36 +179,8 @@ class ReportingService:
 
         if total_msgs > limit:
             logger.warning(f"Too many messages ({total_msgs}). Applying smart truncation...")
-
-            # Smart Truncation:
-            # 1. Take top 50 messages from each chat (to ensure diversity)
-            # 2. Collect all, sort by date
-            # 3. Truncate to limit
-
-            truncated_items = []
-            for title, msgs in data.items():
-                # Sort chat msgs by date desc (newest first)
-                chat_msgs_sorted = sorted(msgs, key=lambda m: m.date, reverse=True)
-                # Take top 50
-                truncated_items.extend([(title, m) for m in chat_msgs_sorted[:50]])
-
-            # Now sort everything by date desc to apply global limit
-            truncated_items.sort(key=lambda x: x[1].date, reverse=True)
-
-            # Global limit
-            truncated_items = truncated_items[:limit]
-
-            # Re-group (and sort back to chronological for the report)
-            truncated_items.sort(key=lambda x: x[1].date)
-
-            new_data: Dict[str, List[Message]] = {}
-            for title, m in truncated_items:
-                if title not in new_data:
-                    new_data[title] = []
-                new_data[title].append(m)
-
-            data = new_data
-            stats_text += f"\n(Truncado inteligentemente para {len(truncated_items)} mensagens)"
+            data, new_count = self._smart_truncate_messages(data, limit)
+            stats_text += f"\n(Truncado inteligentemente para {new_count} mensagens)"
 
         summary = await ai_service.summarize_conversations(data)
 
