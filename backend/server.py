@@ -334,6 +334,22 @@ async def _main() -> None:
         logger.info("Starting Telegram client...")
         await client.start()
 
+        # Startup Notification
+        if settings.REPORT_CHANNEL_ID:
+            try:
+                # Simple normalization for numeric strings
+                target = settings.REPORT_CHANNEL_ID
+                if isinstance(target, str) and target.lstrip("-").isdigit():
+                    target = int(target)
+
+                await client.send_message(
+                    target,
+                    "🚀 **Jules Online!**\nSistemas iniciados. Relatórios agendados e memória ativa.",
+                )
+                logger.info(f"Startup notification sent to {settings.REPORT_CHANNEL_ID}")
+            except Exception as e:
+                logger.warning(f"Failed to send startup notification: {e}")
+
         logger.info("Starting Learning Service...")
         await learning_service.start_listening()
 
