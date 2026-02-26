@@ -108,7 +108,9 @@ class LearningService:
                 chats_processed += 1
 
                 if chats_processed % 5 == 0:
-                    logger.info(f"Global Ingestion: Processed {chats_processed}/{len(dialogs)} chats so far...")
+                    logger.info(
+                        f"Global Ingestion: Processed {chats_processed}/{len(dialogs)} chats so far..."
+                    )
 
                 # Sleep to avoid hitting rate limits too hard
                 await asyncio.sleep(2)
