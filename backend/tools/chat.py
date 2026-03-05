@@ -59,9 +59,7 @@ def _format_chat_info(entity, current_type, dialog) -> str:
 
     unread_count = getattr(dialog, "unread_count", 0) or 0
     inner_dialog = getattr(dialog, "dialog", None)
-    unread_mark = (
-        bool(getattr(inner_dialog, "unread_mark", False)) if inner_dialog else False
-    )
+    unread_mark = bool(getattr(inner_dialog, "unread_mark", False)) if inner_dialog else False
 
     if unread_count > 0:
         chat_info += f", Unread: {unread_count}"

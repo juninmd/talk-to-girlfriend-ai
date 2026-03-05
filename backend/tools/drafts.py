@@ -53,11 +53,7 @@ def _format_draft_info(update) -> Optional[dict]:
     return {
         "peer_id": peer_id,
         "message": getattr(draft, "message", ""),
-        "date": (
-            draft.date.isoformat()
-            if hasattr(draft, "date") and draft.date
-            else None
-        ),
+        "date": (draft.date.isoformat() if hasattr(draft, "date") and draft.date else None),
         "no_webpage": getattr(draft, "no_webpage", False),
     }
 
