@@ -39,7 +39,7 @@ def _get_chat_type(entity) -> str:
         if getattr(entity, "broadcast", False):
             return "channel"
         else:
-            return "group"  # Supergroup
+            return "supergroup"  # Supergroup
     return None
 
 
