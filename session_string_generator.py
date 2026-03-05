@@ -29,6 +29,33 @@ import sys
 load_dotenv()
 
 
+def update_env_file(session_string: str) -> None:
+    try:
+        # Read the current .env file
+        with open(".env", "r") as file:
+            env_contents = file.readlines()
+
+        # Update or add the SESSION_STRING line
+        session_string_line_found = False
+        for i, line in enumerate(env_contents):
+            if line.startswith("TELEGRAM_SESSION_STRING="):
+                env_contents[i] = f"TELEGRAM_SESSION_STRING={session_string}\n"
+                session_string_line_found = True
+                break
+
+        if not session_string_line_found:
+            env_contents.append(f"TELEGRAM_SESSION_STRING={session_string}\n")
+
+        # Write back to the .env file
+        with open(".env", "w") as file:
+            file.writelines(env_contents)
+
+        print("\n.env file updated successfully!")
+    except Exception as e:
+        print(f"\nError updating .env file: {e}")
+        print("Please manually add the session string to your .env file.")
+
+
 def main() -> None:
     API_ID = os.getenv("TELEGRAM_API_ID")
     API_HASH = os.getenv("TELEGRAM_API_HASH")
@@ -73,30 +100,7 @@ def main() -> None:
                 "\nWould you like to automatically update your .env file with this session string? (y/N): "
             )
             if choice.lower() == "y":
-                try:
-                    # Read the current .env file
-                    with open(".env", "r") as file:
-                        env_contents = file.readlines()
-
-                    # Update or add the SESSION_STRING line
-                    session_string_line_found = False
-                    for i, line in enumerate(env_contents):
-                        if line.startswith("TELEGRAM_SESSION_STRING="):
-                            env_contents[i] = f"TELEGRAM_SESSION_STRING={session_string}\n"
-                            session_string_line_found = True
-                            break
-
-                    if not session_string_line_found:
-                        env_contents.append(f"TELEGRAM_SESSION_STRING={session_string}\n")
-
-                    # Write back to the .env file
-                    with open(".env", "w") as file:
-                        file.writelines(env_contents)
-
-                    print("\n.env file updated successfully!")
-                except Exception as e:
-                    print(f"\nError updating .env file: {e}")
-                    print("Please manually add the session string to your .env file.")
+                update_env_file(session_string)
 
     except Exception as e:
         print(f"\nError: {e}")

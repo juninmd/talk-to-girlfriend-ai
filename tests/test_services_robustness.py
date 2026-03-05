@@ -13,6 +13,7 @@ async def test_learning_from_outgoing_message_robust():
 
     # Mock dependencies
     service.client = MagicMock()
+    service.client.get_entity = AsyncMock()
     service._me = None  # Reset me
 
     mock_event = MagicMock()
@@ -55,12 +56,14 @@ async def test_learning_from_outgoing_message_robust():
 @pytest.mark.asyncio
 async def test_reporting_resolve_target_entity_variations():
     service = ReportingService()
-    service.client = AsyncMock()
+    service.client = MagicMock()
+    service.client.get_entity = AsyncMock()
+    service.client.get_me = AsyncMock()
 
     # Case 1: Int ID
     with patch("backend.services.reporting.settings") as mock_settings:
         mock_settings.REPORT_CHANNEL_ID = -100123
-        service.client.get_entity.return_value = MagicMock(id=-100123)
+        service.client.get_entity = AsyncMock(return_value=MagicMock(id=-100123))
 
         entity = await service._resolve_target_entity()
         service.client.get_entity.assert_called_with(-100123)
@@ -69,7 +72,7 @@ async def test_reporting_resolve_target_entity_variations():
     # Case 2: String Int ID
     with patch("backend.services.reporting.settings") as mock_settings:
         mock_settings.REPORT_CHANNEL_ID = "-100456"
-        service.client.get_entity.return_value = MagicMock(id=-100456)
+        service.client.get_entity = AsyncMock(return_value=MagicMock(id=-100456))
 
         entity = await service._resolve_target_entity()
         service.client.get_entity.assert_called_with(-100456)
@@ -78,7 +81,7 @@ async def test_reporting_resolve_target_entity_variations():
     # Case 3: Username (String)
     with patch("backend.services.reporting.settings") as mock_settings:
         mock_settings.REPORT_CHANNEL_ID = "@mychannel"
-        service.client.get_entity.return_value = MagicMock(id=789)
+        service.client.get_entity = AsyncMock(return_value=MagicMock(id=789))
 
         entity = await service._resolve_target_entity()
         service.client.get_entity.assert_called_with("@mychannel")
@@ -87,7 +90,8 @@ async def test_reporting_resolve_target_entity_variations():
     # Case 4: None (Fallback)
     with patch("backend.services.reporting.settings") as mock_settings:
         mock_settings.REPORT_CHANNEL_ID = None
-        service.client.get_me.return_value = MagicMock(id=111)
+        service.client.get_entity = AsyncMock(return_value=MagicMock(id=888))
+        service.client.get_me = AsyncMock(return_value=MagicMock(id=111))
 
         entity = await service._resolve_target_entity()
         service.client.get_me.assert_called()
