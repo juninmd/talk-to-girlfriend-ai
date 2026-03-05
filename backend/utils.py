@@ -65,15 +65,14 @@ def log_and_format_error(
 
 def _validate_single_id(value, p_name):
     if isinstance(value, int):
-        if not (-(2**63) <= value <= 2**63 - 1):
+        if not (MIN_TELEGRAM_ID <= value <= MAX_TELEGRAM_ID):
             return None, f"Invalid {p_name}: {value}. ID is out of range."
         return value, None
     if isinstance(value, str):
         try:
             int_value = int(value)
-            if not (-(2**63) <= int_value <= 2**63 - 1):
+            if not (MIN_TELEGRAM_ID <= int_value <= MAX_TELEGRAM_ID):
                 return None, f"Invalid {p_name}: {value}. ID is out of range."
-            return int_value, None
         except ValueError:
             if re.match(r"^@?[a-zA-Z0-9_]{5,}$", value):
                 return value, None
