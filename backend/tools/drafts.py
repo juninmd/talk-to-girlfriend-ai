@@ -38,7 +38,7 @@ def _get_peer_id(peer) -> Optional[int]:
     elif hasattr(peer, "chat_id"):
         return -peer.chat_id
     elif hasattr(peer, "channel_id"):
-        return -1000000000000 - peer.channel_id
+        return -TELEGRAM_CHANNEL_ID_OFFSET - peer.channel_id
     return None
 
 
