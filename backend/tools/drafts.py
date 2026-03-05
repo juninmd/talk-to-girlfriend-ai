@@ -4,6 +4,8 @@ from backend.client import client
 from backend.utils import log_and_format_error, validate_id, json_serializer
 import json
 
+TELEGRAM_CHANNEL_ID_OFFSET = 1000000000000
+
 
 @validate_id("chat_id")
 async def save_draft(
@@ -30,36 +32,43 @@ async def save_draft(
         return log_and_format_error("save_draft", e, chat_id=chat_id)
 
 
+def _get_peer_id(peer) -> Optional[int]:
+    if not peer:
+        return None
+    if hasattr(peer, "user_id"):
+        return peer.user_id
+    elif hasattr(peer, "chat_id"):
+        return -peer.chat_id
+    elif hasattr(peer, "channel_id"):
+        return -TELEGRAM_CHANNEL_ID_OFFSET - peer.channel_id
+    return None
+
+
+def _format_draft_info(update) -> Optional[dict]:
+    if not hasattr(update, "draft") or not update.draft:
+        return None
+
+    draft = update.draft
+    peer = getattr(update, "peer", None)
+    peer_id = _get_peer_id(peer)
+
+    return {
+        "peer_id": peer_id,
+        "message": getattr(draft, "message", ""),
+        "date": (draft.date.isoformat() if hasattr(draft, "date") and draft.date else None),
+        "no_webpage": getattr(draft, "no_webpage", False),
+    }
+
+
 async def get_drafts() -> str:
     try:
         result = await client(functions.messages.GetAllDraftsRequest())
         drafts_info = []
         if hasattr(result, "updates"):
             for update in result.updates:
-                if hasattr(update, "draft") and update.draft:
-                    draft = update.draft
-                    peer_id = None
-                    if hasattr(update, "peer"):
-                        peer = update.peer
-                        if hasattr(peer, "user_id"):
-                            peer_id = peer.user_id
-                        elif hasattr(peer, "chat_id"):
-                            peer_id = -peer.chat_id
-                        elif hasattr(peer, "channel_id"):
-                            peer_id = -1000000000000 - peer.channel_id
-
-                    drafts_info.append(
-                        {
-                            "peer_id": peer_id,
-                            "message": getattr(draft, "message", ""),
-                            "date": (
-                                draft.date.isoformat()
-                                if hasattr(draft, "date") and draft.date
-                                else None
-                            ),
-                            "no_webpage": getattr(draft, "no_webpage", False),
-                        }
-                    )
+                draft_info = _format_draft_info(update)
+                if draft_info:
+                    drafts_info.append(draft_info)
 
         if not drafts_info:
             return "No drafts found."

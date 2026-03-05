@@ -30,6 +30,47 @@ async def get_chats(page: int = 1, page_size: int = 20) -> str:
         return log_and_format_error("get_chats", e)
 
 
+def _get_chat_type(entity) -> str:
+    if isinstance(entity, User):
+        return "user"
+    elif isinstance(entity, Chat):
+        return "group"
+    elif isinstance(entity, Channel):
+        if getattr(entity, "broadcast", False):
+            return "channel"
+        else:
+            return "group"  # Supergroup
+    return None
+
+
+def _format_chat_info(entity, current_type, dialog) -> str:
+    chat_info = f"Chat ID: {entity.id}"
+    if hasattr(entity, "title"):
+        chat_info += f", Title: {entity.title}"
+    elif hasattr(entity, "first_name"):
+        name = f"{entity.first_name}"
+        if hasattr(entity, "last_name") and entity.last_name:
+            name += f" {entity.last_name}"
+        chat_info += f", Name: {name}"
+
+    chat_info += f", Type: {current_type}"
+    if hasattr(entity, "username") and entity.username:
+        chat_info += f", Username: @{entity.username}"
+
+    unread_count = getattr(dialog, "unread_count", 0) or 0
+    inner_dialog = getattr(dialog, "dialog", None)
+    unread_mark = bool(getattr(inner_dialog, "unread_mark", False)) if inner_dialog else False
+
+    if unread_count > 0:
+        chat_info += f", Unread: {unread_count}"
+    elif unread_mark:
+        chat_info += ", Unread: marked"
+    else:
+        chat_info += ", No unread messages"
+
+    return chat_info
+
+
 async def list_chats(chat_type: str = None, limit: int = 20) -> str:
     """
     List available chats with metadata.
@@ -42,53 +83,51 @@ async def list_chats(chat_type: str = None, limit: int = 20) -> str:
         results = []
         for dialog in dialogs:
             entity = dialog.entity
-            current_type = None
-            if isinstance(entity, User):
-                current_type = "user"
-            elif isinstance(entity, Chat):
-                current_type = "group"
-            elif isinstance(entity, Channel):
-                if getattr(entity, "broadcast", False):
-                    current_type = "channel"
-                else:
-                    current_type = "group"  # Supergroup
+            current_type = _get_chat_type(entity)
 
             if chat_type and current_type != chat_type.lower():
                 continue
 
-            chat_info = f"Chat ID: {entity.id}"
-            if hasattr(entity, "title"):
-                chat_info += f", Title: {entity.title}"
-            elif hasattr(entity, "first_name"):
-                name = f"{entity.first_name}"
-                if hasattr(entity, "last_name") and entity.last_name:
-                    name += f" {entity.last_name}"
-                chat_info += f", Name: {name}"
-
-            chat_info += f", Type: {current_type}"
-            if hasattr(entity, "username") and entity.username:
-                chat_info += f", Username: @{entity.username}"
-
-            unread_count = getattr(dialog, "unread_count", 0) or 0
-            inner_dialog = getattr(dialog, "dialog", None)
-            unread_mark = (
-                bool(getattr(inner_dialog, "unread_mark", False)) if inner_dialog else False
-            )
-
-            if unread_count > 0:
-                chat_info += f", Unread: {unread_count}"
-            elif unread_mark:
-                chat_info += ", Unread: marked"
-            else:
-                chat_info += ", No unread messages"
-
-            results.append(chat_info)
+            results.append(_format_chat_info(entity, current_type, dialog))
 
         if not results:
             return "No chats found matching the criteria."
         return "\n".join(results)
     except Exception as e:
         return log_and_format_error("list_chats", e, chat_type=chat_type, limit=limit)
+
+
+async def _format_group_or_channel_info(entity, result: List[str]):
+    result.append(f"Title: {entity.title}")
+    is_channel = isinstance(entity, Channel)
+    is_chat = isinstance(entity, Chat)
+    chat_type = "Channel" if is_channel and getattr(entity, "broadcast", False) else "Group"
+    if is_channel and getattr(entity, "megagroup", False):
+        chat_type = "Supergroup"
+    elif is_chat:
+        chat_type = "Group (Basic)"
+    result.append(f"Type: {chat_type}")
+    if hasattr(entity, "username") and entity.username:
+        result.append(f"Username: @{entity.username}")
+    try:
+        participants_count = (await client.get_participants(entity, limit=0)).total
+        result.append(f"Participants: {participants_count}")
+    except Exception as pe:
+        result.append(f"Participants: Error fetching ({pe})")
+
+
+def _format_user_info(entity, result: List[str]):
+    name = f"{entity.first_name}"
+    if entity.last_name:
+        name += f" {entity.last_name}"
+    result.append(f"Name: {name}")
+    result.append("Type: User")
+    if entity.username:
+        result.append(f"Username: @{entity.username}")
+    if entity.phone:
+        result.append(f"Phone: {entity.phone}")
+    result.append(f"Bot: {'Yes' if entity.bot else 'No'}")
+    result.append(f"Verified: {'Yes' if entity.verified else 'No'}")
 
 
 @validate_id("chat_id")
@@ -100,45 +139,44 @@ async def get_chat(chat_id: Union[int, str]) -> str:
     """
     try:
         entity = await client.get_entity(chat_id)
-        result = []
-        result.append(f"ID: {entity.id}")
-        is_channel = isinstance(entity, Channel)
-        is_chat = isinstance(entity, Chat)
+        result = [f"ID: {entity.id}"]
         is_user = isinstance(entity, User)
 
         if hasattr(entity, "title"):
-            result.append(f"Title: {entity.title}")
-            chat_type = (
-                "Channel" if is_channel and getattr(entity, "broadcast", False) else "Group"
-            )
-            if is_channel and getattr(entity, "megagroup", False):
-                chat_type = "Supergroup"
-            elif is_chat:
-                chat_type = "Group (Basic)"
-            result.append(f"Type: {chat_type}")
-            if hasattr(entity, "username") and entity.username:
-                result.append(f"Username: @{entity.username}")
-            try:
-                participants_count = (await client.get_participants(entity, limit=0)).total
-                result.append(f"Participants: {participants_count}")
-            except Exception as pe:
-                result.append(f"Participants: Error fetching ({pe})")
+            await _format_group_or_channel_info(entity, result)
         elif is_user:
-            name = f"{entity.first_name}"
-            if entity.last_name:
-                name += f" {entity.last_name}"
-            result.append(f"Name: {name}")
-            result.append("Type: User")
-            if entity.username:
-                result.append(f"Username: @{entity.username}")
-            if entity.phone:
-                result.append(f"Phone: {entity.phone}")
-            result.append(f"Bot: {'Yes' if entity.bot else 'No'}")
-            result.append(f"Verified: {'Yes' if entity.verified else 'No'}")
+            _format_user_info(entity, result)
 
         return "\n".join(result)
     except Exception as e:
         return log_and_format_error("get_chat", e, chat_id=chat_id)
+
+
+async def _leave_channel(entity, chat_id) -> str:
+    try:
+        await client(functions.channels.LeaveChannelRequest(channel=entity))
+        chat_name = getattr(entity, "title", str(chat_id))
+        return f"Left channel/supergroup {chat_name} (ID: {chat_id})."
+    except Exception as chan_err:
+        return log_and_format_error("leave_chat", chan_err, chat_id=chat_id)
+
+
+async def _leave_group(entity, chat_id) -> str:
+    try:
+        me = await client.get_me(input_peer=True)
+        await client(functions.messages.DeleteChatUserRequest(chat_id=entity.id, user_id=me))
+        chat_name = getattr(entity, "title", str(chat_id))
+        return f"Left basic group {chat_name} (ID: {chat_id})."
+    except Exception:
+        try:
+            me_full = await client.get_me()
+            await client(
+                functions.messages.DeleteChatUserRequest(chat_id=entity.id, user_id=me_full.id)
+            )
+            chat_name = getattr(entity, "title", str(chat_id))
+            return f"Left basic group {chat_name} (ID: {chat_id})."
+        except Exception as alt_err:
+            return log_and_format_error("leave_chat", alt_err, chat_id=chat_id)
 
 
 @validate_id("chat_id")
@@ -151,32 +189,9 @@ async def leave_chat(chat_id: Union[int, str]) -> str:
     try:
         entity = await client.get_entity(chat_id)
         if isinstance(entity, Channel):
-            try:
-                await client(functions.channels.LeaveChannelRequest(channel=entity))
-                chat_name = getattr(entity, "title", str(chat_id))
-                return f"Left channel/supergroup {chat_name} (ID: {chat_id})."
-            except Exception as chan_err:
-                return log_and_format_error("leave_chat", chan_err, chat_id=chat_id)
+            return await _leave_channel(entity, chat_id)
         elif isinstance(entity, Chat):
-            try:
-                me = await client.get_me(input_peer=True)
-                await client(
-                    functions.messages.DeleteChatUserRequest(chat_id=entity.id, user_id=me)
-                )
-                chat_name = getattr(entity, "title", str(chat_id))
-                return f"Left basic group {chat_name} (ID: {chat_id})."
-            except Exception:
-                try:
-                    me_full = await client.get_me()
-                    await client(
-                        functions.messages.DeleteChatUserRequest(
-                            chat_id=entity.id, user_id=me_full.id
-                        )
-                    )
-                    chat_name = getattr(entity, "title", str(chat_id))
-                    return f"Left basic group {chat_name} (ID: {chat_id})."
-                except Exception as alt_err:
-                    return log_and_format_error("leave_chat", alt_err, chat_id=chat_id)
+            return await _leave_group(entity, chat_id)
         else:
             return log_and_format_error(
                 "leave_chat",

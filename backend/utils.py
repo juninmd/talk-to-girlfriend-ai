@@ -63,6 +63,57 @@ def log_and_format_error(
     return f"An error occurred (code: {error_code}). Check mcp_errors.log for details."
 
 
+MIN_TELEGRAM_ID = -(2**63)
+MAX_TELEGRAM_ID = 2**63 - 1
+
+
+def _validate_single_id(value, p_name):
+    if isinstance(value, int):
+        if not (MIN_TELEGRAM_ID <= value <= MAX_TELEGRAM_ID):
+            return None, f"Invalid {p_name}: {value}. ID is out of range."
+        return value, None
+    if isinstance(value, str):
+        try:
+            int_value = int(value)
+            if not (MIN_TELEGRAM_ID <= int_value <= MAX_TELEGRAM_ID):
+                return None, f"Invalid {p_name}: {value}. ID is out of range."
+            return int_value, None
+        except ValueError:
+            if re.match(r"^@?[a-zA-Z0-9_]{5,}$", value):
+                return value, None
+            else:
+                return None, f"Invalid {p_name}: '{value}'. Must be integer or username."
+    return None, f"Invalid {p_name}: {value}. Type must be int or str."
+
+
+def _process_param_value(func_name, param_name, param_value):
+    if isinstance(param_value, list):
+        validated_list = []
+        for item in param_value:
+            validated_item, error_msg = _validate_single_id(item, param_name)
+            if error_msg:
+                return None, log_and_format_error(
+                    func_name,
+                    ValidationError(error_msg),
+                    prefix="VALIDATION-001",
+                    user_message=error_msg,
+                    **{param_name: param_value},
+                )
+            validated_list.append(validated_item)
+        return validated_list, None
+    else:
+        validated_value, error_msg = _validate_single_id(param_value, param_name)
+        if error_msg:
+            return None, log_and_format_error(
+                func_name,
+                ValidationError(error_msg),
+                prefix="VALIDATION-001",
+                user_message=error_msg,
+                **{param_name: param_value},
+            )
+        return validated_value, None
+
+
 def validate_id(*param_names_to_validate):
     """
     Decorator to validate chat_id and user_id parameters.
@@ -76,62 +127,13 @@ def validate_id(*param_names_to_validate):
                     continue
 
                 param_value = kwargs[param_name]
+                validated_val, err_resp = _process_param_value(
+                    func.__name__, param_name, param_value
+                )
+                if err_resp is not None:
+                    return err_resp
 
-                def validate_single_id(value, p_name):
-                    if isinstance(value, int):
-                        if not (-(2**63) <= value <= 2**63 - 1):
-                            return (
-                                None,
-                                f"Invalid {p_name}: {value}. ID is out of range.",
-                            )
-                        return value, None
-                    if isinstance(value, str):
-                        try:
-                            int_value = int(value)
-                            if not (-(2**63) <= int_value <= 2**63 - 1):
-                                return (
-                                    None,
-                                    f"Invalid {p_name}: {value}. ID is out of range.",
-                                )
-                            return int_value, None
-                        except ValueError:
-                            if re.match(r"^@?[a-zA-Z0-9_]{5,}$", value):
-                                return value, None
-                            else:
-                                return (
-                                    None,
-                                    f"Invalid {p_name}: '{value}'. Must be integer or username.",
-                                )
-                    return (
-                        None,
-                        f"Invalid {p_name}: {value}. Type must be int or str.",
-                    )
-
-                if isinstance(param_value, list):
-                    validated_list = []
-                    for item in param_value:
-                        validated_item, error_msg = validate_single_id(item, param_name)
-                        if error_msg:
-                            return log_and_format_error(
-                                func.__name__,
-                                ValidationError(error_msg),
-                                prefix="VALIDATION-001",
-                                user_message=error_msg,
-                                **{param_name: param_value},
-                            )
-                        validated_list.append(validated_item)
-                    kwargs[param_name] = validated_list
-                else:
-                    validated_value, error_msg = validate_single_id(param_value, param_name)
-                    if error_msg:
-                        return log_and_format_error(
-                            func.__name__,
-                            ValidationError(error_msg),
-                            prefix="VALIDATION-001",
-                            user_message=error_msg,
-                            **{param_name: param_value},
-                        )
-                    kwargs[param_name] = validated_value
+                kwargs[param_name] = validated_val
 
             return await func(*args, **kwargs)
 
