@@ -4,6 +4,8 @@ from backend.client import client
 from backend.utils import log_and_format_error, validate_id, json_serializer
 import json
 
+TELEGRAM_CHANNEL_ID_OFFSET = 1000000000000
+
 
 @validate_id("chat_id")
 async def save_draft(

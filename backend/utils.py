@@ -63,6 +63,10 @@ def log_and_format_error(
     return f"An error occurred (code: {error_code}). Check mcp_errors.log for details."
 
 
+MIN_TELEGRAM_ID = -(2**63)
+MAX_TELEGRAM_ID = 2**63 - 1
+
+
 def _validate_single_id(value, p_name):
     if isinstance(value, int):
         if not (MIN_TELEGRAM_ID <= value <= MAX_TELEGRAM_ID):
@@ -73,6 +77,7 @@ def _validate_single_id(value, p_name):
             int_value = int(value)
             if not (MIN_TELEGRAM_ID <= int_value <= MAX_TELEGRAM_ID):
                 return None, f"Invalid {p_name}: {value}. ID is out of range."
+            return int_value, None
         except ValueError:
             if re.match(r"^@?[a-zA-Z0-9_]{5,}$", value):
                 return value, None
