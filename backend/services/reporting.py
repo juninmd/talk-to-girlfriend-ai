@@ -75,7 +75,7 @@ class ReportingService:
             statement = statement.order_by(Message.date.desc()).limit(5000)
 
             messages = session.exec(statement).all()
-            return list(messages)
+            return list(reversed(messages))
 
     async def _prepare_data_for_ai(self, messages: List[Message]) -> Dict[str, List[Message]]:
         """Groups messages by chat and resolves chat titles."""
