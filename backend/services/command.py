@@ -177,3 +177,4 @@ class CommandService:
             return session.exec(statement).all()
             return session.exec(statement).all()
             return session.exec(statement).all()
+            return session.exec(statement).all()
