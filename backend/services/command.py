@@ -150,11 +150,12 @@ class CommandService:
 
     def _fetch_facts(self, chat_id: int, sender_id: Optional[int] = None):
         with Session(engine) as session:
-            query = select(Fact).where(Fact.chat_id == chat_id)
             if sender_id:
                 query = select(Fact).where(
                     or_(Fact.chat_id == chat_id, Fact.sender_id == sender_id)
                 )
+            else:
+                query = select(Fact).where(Fact.chat_id == chat_id)
 
             statement = query.order_by(Fact.created_at.desc()).limit(
                 settings.AI_CONTEXT_FACT_LIMIT
