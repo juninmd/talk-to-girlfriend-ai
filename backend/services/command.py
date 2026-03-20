@@ -161,3 +161,4 @@ class CommandService:
                 settings.AI_CONTEXT_FACT_LIMIT
             )
             return session.exec(statement).all()
+            return session.exec(statement).all()
