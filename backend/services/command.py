@@ -74,7 +74,7 @@ class CommandService:
             try:
                 parsed_limit = int(parts[1])
                 if parsed_limit > 0:
-                    limit = min(parsed_limit, 500)  # Max limit 500
+                    limit = min(parsed_limit, settings.LEARNING_MAX_LIMIT)  # Max limit 500
             except ValueError:
                 pass
 
