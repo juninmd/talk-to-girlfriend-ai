@@ -1,14 +1,9 @@
-[[allowlist]]
-description = "False positive: generic-api-key in .env.example"
-rules = ["generic-api-key"]
-paths = [".env.example"]
-
-[[allowlist]]
-description = "False positive: generic-api-key in .github/workflows/python-tests.yml"
-rules = ["generic-api-key"]
-paths = [".github/workflows/python-tests.yml"]
-
-[[allowlist]]
-description = "False positive: generic-api-key in .env.example"
-rules = ["generic-api-key"]
-paths = [".env.example"]
+[allowlist]
+description = "Merged allowlist"
+rules = [
+  "generic-api-key"
+]
+paths = [
+  ".env.example",
+  ".github/workflows/python-tests.yml"
+]
